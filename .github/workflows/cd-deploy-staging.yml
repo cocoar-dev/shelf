@@ -20,20 +20,20 @@ jobs:
       version: ${{ steps.build_version.outputs.VERSION }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           ref: ${{ github.ref }}
           fetch-depth: 0
           fetch-tags: true
 
       - name: Install GitVersion
-        uses: gittools/actions/gitversion/setup@v3
+        uses: gittools/actions/gitversion/setup@v4
         with:
           versionSpec: '6.x'
 
       - name: Calculate version
         id: gv
-        uses: gittools/actions/gitversion/execute@v3
+        uses: gittools/actions/gitversion/execute@v4
 
       - name: Build version string
         id: build_version
@@ -54,10 +54,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           dotnet-version: 10.0.x
 
@@ -92,7 +92,7 @@ jobs:
         working-directory: ./src
 
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: shelf-app
           path: ./publish
@@ -110,16 +110,16 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Download artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: shelf-app
           path: ./docker/app
 
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -127,7 +127,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -136,7 +136,7 @@ jobs:
             type=raw,value=${{ needs.version.outputs.version }}
 
       - name: Build and push Docker image
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./docker
           file: ./docker/Dockerfile
