@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/.SolutionItems/">
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Cocoar.Shelf.Tests/Cocoar.Shelf.Tests.csproj" />
+  </Folder>
+  <Project Path="Cocoar.Shelf/Cocoar.Shelf.csproj" />
+</Solution>

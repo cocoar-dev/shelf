@@ -1,0 +1,11 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <Description>Static documentation hosting platform for Cocoar products</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Cocoar.FileSystem" />
+  </ItemGroup>
+
+</Project>

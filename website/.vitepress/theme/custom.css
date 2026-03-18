@@ -1,0 +1,47 @@
+/**
+ * Shelf — VitePress Brand Theme
+ *
+ * Uses Cocoar brand colors for consistency across the ecosystem.
+ *   Primary blue:  #1183CD
+ *   Dark text:     #292F3B
+ *   Accent blue:   #0E6DB0
+ */
+
+:root {
+  --vp-c-brand-1: #1183CD;
+  --vp-c-brand-2: #0E6DB0;
+  --vp-c-brand-3: #1183CD;
+  --vp-c-brand-soft: rgba(26, 143, 227, 0.14);
+
+  --vp-c-tip-1: var(--vp-c-brand-1);
+  --vp-c-tip-soft: var(--vp-c-brand-soft);
+  --vp-c-bg-soft: #f6f8fa;
+}
+
+.dark {
+  --vp-c-brand-1: #4AADFF;
+  --vp-c-brand-2: #1183CD;
+  --vp-c-brand-3: #4AADFF;
+  --vp-c-brand-soft: rgba(74, 173, 255, 0.14);
+  --vp-c-bg-soft: #1a1e24;
+}
+
+.VPHero .name {
+  color: #1183CD !important;
+  background: none !important;
+  -webkit-text-fill-color: #1183CD !important;
+}
+
+.dark .VPHero .name {
+  color: #4AADFF !important;
+  background: none !important;
+  -webkit-text-fill-color: #4AADFF !important;
+}
+
+.vp-doc :not(pre) > code {
+  color: var(--vp-c-brand-1) !important;
+}
+
+.dark .vp-doc :not(pre) > code {
+  color: var(--vp-c-brand-3) !important;
+}

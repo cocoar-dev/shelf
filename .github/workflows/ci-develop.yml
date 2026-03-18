@@ -1,0 +1,61 @@
+name: CI - Develop
+
+on:
+  push:
+    branches: [ develop ]
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+
+      - name: Configure NuGet authentication
+        run: |
+          dotnet nuget add source https://nuget.pkg.github.com/windischb/index.json \
+            --name github \
+            --username windischb \
+            --password ${{ secrets.PERSONAL_PACKAGES_TOKEN }} \
+            --store-password-in-clear-text
+
+          dotnet nuget add source https://nuget.pkg.github.com/cocoar-dev/index.json \
+            --name github_cocoar \
+            --username windischb \
+            --password ${{ secrets.PERSONAL_PACKAGES_TOKEN }} \
+            --store-password-in-clear-text
+
+      - name: Install GitVersion
+        uses: gittools/actions/gitversion/setup@v3
+        with:
+          versionSpec: '6.x'
+
+      - name: Calculate version
+        id: gv
+        uses: gittools/actions/gitversion/execute@v3
+
+      - name: Log version
+        run: echo "Building version ${{ steps.gv.outputs.SemVer }}"
+
+      - name: Restore dependencies
+        run: dotnet restore Cocoar.Shelf.slnx
+        working-directory: ./src
+
+      - name: Build
+        run: dotnet build Cocoar.Shelf.slnx -c Release --no-restore -p:Version=${{ steps.gv.outputs.SemVer }}
+        working-directory: ./src
+
+      - name: Test
+        run: dotnet test Cocoar.Shelf.slnx -c Release --no-build --verbosity normal
+        working-directory: ./src
