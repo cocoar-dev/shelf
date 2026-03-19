@@ -4,7 +4,16 @@ export default defineConfig({
   title: 'Shelf',
   description: 'Static documentation hosting for Cocoar products',
 
+  head: [
+    ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo_light.svg' }],
+  ],
+
   themeConfig: {
+    logo: {
+      light: '/logo_light.svg',
+      dark: '/logo_dark.svg',
+    },
+
     siteTitle: 'Shelf',
 
     nav: [
