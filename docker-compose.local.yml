@@ -1,0 +1,11 @@
+services:
+  shelf:
+    image: ghcr.io/cocoar-dev/shelf:staging
+    ports:
+      - "5199:8080"
+    volumes:
+      - ./local-docs:/data/docs
+      - ./local-config:/data/config:ro
+    environment:
+      - Shelf__ApiKey=dev-key
+    restart: unless-stopped

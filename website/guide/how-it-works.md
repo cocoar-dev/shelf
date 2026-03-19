@@ -50,7 +50,7 @@ VitePress bakes the `base` path into all generated files at build time. Normally
 
 Shelf watches the docs directory for changes using [Cocoar.FileSystem](https://github.com/cocoar-dev/Cocoar.FileSystem)'s `ResilientFileSystemMonitor`. When a new version directory is created or removed, the cached version list for that product is automatically invalidated.
 
-This means deploying a new version is instant — just create the directory with the files, and Shelf picks it up without a restart.
+This means deploying a new version is instant — whether via the [Upload API](./upload-api.md) or by copying files directly into the volume. Shelf picks it up without a restart.
 
 We use `ResilientFileSystemMonitor` instead of .NET's raw `FileSystemWatcher` because it provides:
 

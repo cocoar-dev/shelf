@@ -6,7 +6,10 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - /srv/docs:/data/docs:ro
+      - /srv/docs:/data/docs
+      - /srv/config:/data/config:ro
     environment:
       - Shelf__DocsRoot=/data/docs
+      - Shelf__ConfigRoot=/data/config
+      - Shelf__ApiKey=${SHELF_API_KEY:-}
     restart: unless-stopped

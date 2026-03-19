@@ -18,8 +18,8 @@ features:
     details: Host documentation for multiple products under one domain. Each product gets its own URL prefix.
   - title: Multi-Version
     details: Deploy new versions without touching old ones. All versions stay accessible side-by-side.
-  - title: Zero Config Deployment
-    details: Just put files in the volume. Shelf detects new versions automatically via filesystem scanning.
+  - title: Upload API
+    details: Deploy docs from CI/CD pipelines via HTTP. Just zip your VitePress output and POST it.
   - title: Built for VitePress
     details: Optimized for serving VitePress static output including LLM documentation files (llms.txt).
 ---

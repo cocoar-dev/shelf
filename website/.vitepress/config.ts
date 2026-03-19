@@ -28,6 +28,13 @@ export default defineConfig({
           ],
         },
         {
+          text: 'Deployment',
+          items: [
+            { text: 'Product Registration', link: '/guide/product-registration' },
+            { text: 'Upload API', link: '/guide/upload-api' },
+          ],
+        },
+        {
           text: 'Details',
           items: [
             { text: 'URL Routing', link: '/guide/url-routing' },

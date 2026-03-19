@@ -75,7 +75,7 @@ public partial class DocsRoutingMiddleware
                 return;
             }
 
-            var redirectPath = $"/{product}/{manifest.Latest}/{rest}";
+            var redirectPath = $"{context.Request.PathBase}/{product}/{manifest.Latest}/{rest}";
             context.Response.Redirect(redirectPath, permanent: false);
             return;
         }
@@ -120,7 +120,7 @@ public partial class DocsRoutingMiddleware
         {
             var versionDir = Path.Combine(productDir, version);
             var originalBase = _basePathDetector.Detect(versionDir);
-            var targetBase = $"/{product}/{version}/";
+            var targetBase = $"{context.Request.PathBase}/{product}/{version}/";
 
             if (originalBase != targetBase)
             {
