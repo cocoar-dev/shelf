@@ -41,7 +41,9 @@ public sealed partial class UploadService : IUploadService
                     if (string.IsNullOrEmpty(entry.Name))
                         continue;
 
-                    var destPath = Path.GetFullPath(Path.Combine(tempDir, entry.FullName));
+                    // Normalize backslashes from Windows-created ZIPs
+                    var entryPath = entry.FullName.Replace('\\', '/');
+                    var destPath = Path.GetFullPath(Path.Combine(tempDir, entryPath));
 
                     // ZIP-Slip protection
                     if (!destPath.StartsWith(tempDirFull, StringComparison.OrdinalIgnoreCase))
