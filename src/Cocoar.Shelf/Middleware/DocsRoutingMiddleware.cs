@@ -81,7 +81,9 @@ public partial class DocsRoutingMiddleware
         }
 
         // Directory requests → serve index.html
-        if (string.IsNullOrEmpty(Path.GetExtension(resolvedPath)))
+        // Note: Directory.Exists handles SemVer directories like "v0.1" where
+        // Path.GetExtension would incorrectly treat ".1" as a file extension
+        if (string.IsNullOrEmpty(Path.GetExtension(resolvedPath)) || Directory.Exists(resolvedPath))
         {
             resolvedPath = Path.Combine(resolvedPath, "index.html");
         }
