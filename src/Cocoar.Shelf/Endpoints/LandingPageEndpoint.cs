@@ -22,17 +22,26 @@ public static class LandingPageEndpoint
             var manifest = manifestService.GetManifest(config.Name);
             if (manifest == null) continue;
 
-            var url = $"{pathBase}/{config.Name}/";
+            var latestUrl = $"{pathBase}/{config.Name}/";
+
+            var badges = new StringBuilder();
+            foreach (var version in manifest.Versions)
+            {
+                var versionUrl = $"{pathBase}/{config.Name}/{version}/";
+                var isLatest = version == manifest.Latest;
+                var cssClass = isLatest ? "version-badge latest" : "version-badge";
+                badges.Append(CultureInfo.InvariantCulture,
+                    $"""<a href="{Encode(versionUrl)}" target="_blank" class="{cssClass}">{Encode(version)}</a>""");
+            }
 
             cards.AppendLine(CultureInfo.InvariantCulture, $"""
-                <a href="{Encode(url)}" target="_blank" class="card">
-                    <div class="card-name">{Encode(config.DisplayName ?? config.Name)}</div>
-                    <div class="card-desc">{Encode(config.Description ?? "")}</div>
-                    <div class="card-meta">
-                        <span class="card-latest">{Encode(manifest.Latest)}</span>
-                        <span class="card-count">{manifest.Versions.Count} version{(manifest.Versions.Count != 1 ? "s" : "")}</span>
-                    </div>
-                </a>
+                <div class="card">
+                    <a href="{Encode(latestUrl)}" target="_blank" class="card-link">
+                        <div class="card-name">{Encode(config.DisplayName ?? config.Name)}</div>
+                        <div class="card-desc">{Encode(config.Description ?? "")}</div>
+                    </a>
+                    <div class="card-versions">{badges}</div>
+                </div>
                 """);
         }
 
@@ -86,16 +95,20 @@ public static class LandingPageEndpoint
                     border: 1px solid #e2e8f0;
                     border-radius: 8px;
                     padding: 24px;
-                    text-decoration: none;
-                    color: inherit;
-                    transition: border-color 0.15s, box-shadow 0.15s;
                     display: flex;
                     flex-direction: column;
+                    transition: border-color 0.15s, box-shadow 0.15s;
                 }
                 .card:hover {
                     border-color: #1183CD;
                     box-shadow: 0 2px 8px rgba(17, 131, 205, 0.12);
                 }
+                .card-link {
+                    text-decoration: none;
+                    color: inherit;
+                    flex: 1;
+                }
+                .card-link:hover .card-name { color: #0E6DB0; }
                 .card-name {
                     font-size: 1.15em;
                     font-weight: 600;
@@ -106,22 +119,38 @@ public static class LandingPageEndpoint
                     font-size: 0.9em;
                     color: #64748b;
                     line-height: 1.5;
-                    flex: 1;
                 }
-                .card-meta {
+                .card-versions {
                     margin-top: 16px;
+                    padding-top: 14px;
+                    border-top: 1px solid #f1f1f2;
                     display: flex;
-                    gap: 12px;
-                    font-size: 0.82em;
-                    color: #94a3b8;
+                    flex-wrap: wrap;
+                    gap: 6px;
                 }
-                .card-latest {
+                .version-badge {
+                    display: inline-block;
+                    padding: 2px 10px;
+                    border-radius: 10px;
+                    font-size: 0.78em;
+                    font-weight: 500;
+                    text-decoration: none;
+                    background: #f6f6f7;
+                    color: #64748b;
+                    border: 1px solid #e2e8f0;
+                    transition: border-color 0.15s, color 0.15s;
+                }
+                .version-badge:hover {
+                    border-color: #1183CD;
+                    color: #1183CD;
+                }
+                .version-badge.latest {
                     background: #dbeafe;
                     color: #1183CD;
-                    padding: 2px 8px;
-                    border-radius: 4px;
-                    font-weight: 500;
+                    border-color: #bfdbfe;
+                    font-weight: 600;
                 }
+                .version-badge.latest:hover { background: #bfdbfe; }
                 .empty {
                     text-align: center;
                     color: #94a3b8;
