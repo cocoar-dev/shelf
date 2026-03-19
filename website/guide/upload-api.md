@@ -46,40 +46,86 @@ docs.zip
 
 Re-uploading an existing version replaces it atomically.
 
-## GitHub Actions Example
+## CI/CD Integration
+
+### Setup
+
+1. Add `SHELF_API_KEY` as a repository secret in GitHub
+2. Ensure the product is [registered](./product-registration.md) on the server
+3. Add a deploy job to your workflow
+
+### GitHub Actions with GitVersion
 
 ```yaml
 name: Deploy Docs
 
 on:
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'Version tag (e.g. v6)'
-        required: true
+  push:
+    branches: [main]
 
 jobs:
-  deploy:
+  deploy-docs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Build docs
-        run: |
-          npm ci
-          npx vitepress build
+      - name: GitVersion
+        id: version
+        uses: gittools/actions/gitversion/execute@v3
 
-      - name: Package docs
-        run: cd .vitepress/dist && zip -r ../../docs.zip .
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-      - name: Upload to Shelf
+      - name: Build
+        working-directory: website
+        run: npm ci && npx vitepress build
+
+      - name: Package
+        run: cd website/.vitepress/dist && zip -r $GITHUB_WORKSPACE/docs.zip .
+
+      - name: Deploy to Shelf
+        env:                                            # [!code highlight]
+          KEY: ${{ secrets.SHELF_API_KEY }}              # [!code highlight]
+          VER: ${{ steps.version.outputs.major }}.${{ steps.version.outputs.minor }} # [!code highlight]
         run: |
           curl -f -X POST \
-            -H "Authorization: Bearer ${{ secrets.SHELF_API_KEY }}" \
+            -H "Authorization: Bearer $KEY" \
             -H "Content-Type: application/zip" \
-            --data-binary @docs.zip \
-            https://docs.cocoar.dev/api/products/configuration/versions/${{ inputs.version }}
+            --data-binary @$GITHUB_WORKSPACE/docs.zip \
+            https://docs.cocoar.dev/api/products/configuration/versions/v$VER
 ```
+
+::: tip Version Format
+Choose what makes sense for your docs. Use the GitVersion output variables in the upload URL:
+- **Major only** → `v5` (use `outputs.major`)
+- **Major.Minor** → `v5.2` (recommended, use `outputs.major` + `outputs.minor`)
+- **Full SemVer** → `v5.2.0` (use `outputs.majorMinorPatch`)
+:::
+
+### Manual Trigger Variant
+
+Replace the `on:` section to allow manual deploys with a version input:
+
+```yaml
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version (e.g. v5.2)'
+        required: true
+```
+
+Then use the `inputs.version` variable instead of the GitVersion output in the `env` section.
+
+### Key Points
+
+- **ZIP from inside the dist directory** — `cd .vitepress/dist && zip -r ... .` so `index.html` is at the root
+- **Use `curl -f`** — fails the step on HTTP errors (4xx/5xx)
+- **Re-upload replaces atomically** — safe to re-run the pipeline
+- **Pre-release versions are never "latest"** — visitors are redirected to the highest stable version
 
 ## API Endpoints
 
@@ -98,8 +144,8 @@ Returns all registered products with their version information. No authenticatio
     "displayName": "Cocoar.Configuration",
     "description": "Reactive configuration for .NET",
     "source": "upload",
-    "latest": "v5",
-    "versions": ["v5", "v4"]
+    "latest": "v5.2.0",
+    "versions": ["v5.2.0", "v5.1.0", "v5.0.0"]
   }
 ]
 ```
@@ -115,8 +161,8 @@ Returns version information for a specific product. No authentication required.
 ```json
 {
   "name": "configuration",
-  "latest": "v5",
-  "versions": ["v5", "v4"]
+  "latest": "v5.2.0",
+  "versions": ["v5.2.0", "v5.1.0", "v5.0.0"]
 }
 ```
 
