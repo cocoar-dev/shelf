@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "vitepress dev",
     "build": "vitepress build",
+    "export": "node scripts/export-md.mjs",
     "preview": "vitepress preview"
   },
   "devDependencies": {
