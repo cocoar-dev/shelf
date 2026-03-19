@@ -6,10 +6,10 @@ Shelf routes requests based on the URL structure. Every URL starts with a produc
 
 | URL | Behavior |
 |---|---|
-| `/configuration/` | **Redirect** to latest version (e.g., `/configuration/v5/`) |
-| `/configuration/v5/` | Serve `v5/index.html` |
-| `/configuration/v5/guide/getting-started.html` | Serve `v5/guide/getting-started.html` |
-| `/configuration/v5/llms.txt` | Serve `v5/llms.txt` |
+| `/configuration/` | **Redirect** to latest stable version (e.g., `/configuration/v5.2.0/`) |
+| `/configuration/v5.2.0/` | Serve `v5.2.0/index.html` |
+| `/configuration/v5.2.0/guide/getting-started.html` | Serve `v5.2.0/guide/getting-started.html` |
+| `/configuration/v5.2.0/llms.txt` | Serve `v5.2.0/llms.txt` |
 
 ## Latest Version Redirect
 
@@ -19,18 +19,18 @@ This redirect is necessary because VitePress's client-side router needs the URL 
 
 ## How "Latest" Is Determined
 
-Shelf scans the product directory for subdirectories matching the version pattern (`v1`, `v2`, ...) and picks the **highest version number**.
+Shelf scans the product directory for subdirectories matching the [version pattern](./configuration.md#version-pattern) and picks the **highest stable version**.
 
-Example: if `/data/docs/configuration/` contains `v3/`, `v5/`, `v4/`, then the latest version is `v5`.
-
-The sorting is **numeric**, not alphabetical: `v10` is higher than `v9`.
+- Sorting is **numeric** by Major.Minor.Patch: `v5.2.0` > `v5.1.0` > `v5.0.0`
+- **Stable versions are preferred** over pre-releases: if both `v5.2.0` and `v6.0.0-beta.1` exist, the latest is `v5.2.0`
+- If only pre-release versions exist, the highest one is used
 
 ## Version Detection
 
 The first path segment after the product name is checked against the version pattern:
 
-- `/configuration/v5/...` — `v5` matches `^v\d+$` → explicit version, serve directly
-- `/configuration/guide/...` — `guide` does not match → redirect to latest
+- `/configuration/v5.2.0/...` — matches version pattern → explicit version, serve directly
+- `/configuration/guide/...` — does not match → redirect to latest
 
 ## VitePress Base Path
 

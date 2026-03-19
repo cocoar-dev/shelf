@@ -90,15 +90,37 @@ public sealed partial class ManifestService : IManifestService, IDisposable
         if (versions.Count == 0)
             return null;
 
+        // Latest = highest stable version, fallback to highest pre-release
+        var latest = versions.FirstOrDefault(v => ParseVersion(v).IsStable) ?? versions[0];
+
         return new ProductManifest
         {
-            Latest = versions[0],
+            Latest = latest,
             Versions = versions
         };
     }
 
-    private static int ParseVersion(string version) =>
-        int.TryParse(version.AsSpan(1), out var num) ? num : 0;
+    internal static (int Major, int Minor, int Patch, bool IsStable, string Pre) ParseVersion(string version)
+    {
+        var s = version.AsSpan();
+        if (s.Length > 0 && s[0] is 'v' or 'V')
+            s = s[1..];
+
+        var dashIndex = s.IndexOf('-');
+        string pre = "";
+        if (dashIndex >= 0)
+        {
+            pre = s[(dashIndex + 1)..].ToString();
+            s = s[..dashIndex];
+        }
+
+        var parts = s.ToString().Split('.');
+        var major = parts.Length > 0 && int.TryParse(parts[0], out var ma) ? ma : 0;
+        var minor = parts.Length > 1 && int.TryParse(parts[1], out var mi) ? mi : 0;
+        var patch = parts.Length > 2 && int.TryParse(parts[2], out var pa) ? pa : 0;
+
+        return (major, minor, patch, pre.Length == 0, pre);
+    }
 
     private void InvalidateCache(string fullPath)
     {

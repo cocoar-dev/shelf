@@ -37,7 +37,7 @@ docs.zip
 
 1. API key is validated
 2. Product registration is checked (must exist in config)
-3. Version format is validated against the [version pattern](./configuration.md#version-pattern)
+3. Version format is validated against the [version pattern](./configuration.md#version-pattern) (supports SemVer: `v5`, `v5.2`, `v5.2.0`, `v5.2.0-beta.1`)
 4. ZIP is extracted to a temporary directory
 5. Validation: `index.html` must exist at the root
 6. Atomic move to `/data/docs/{product}/{version}/`

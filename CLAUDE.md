@@ -21,7 +21,7 @@ docker compose up --build
 
 - **ASP.NET Core** app serving static files from a mounted volume
 - Products and versions organized as `{docsRoot}/{product}/{version}/`
-- Versions are auto-detected by scanning the filesystem (directories matching `v\d+`)
+- Versions are auto-detected by scanning the filesystem (SemVer: `v5`, `v5.2`, `v5.2.0`, `v5.2.0-beta.1`)
 - Highest version number is automatically the "latest"
 - Requests without explicit version are redirected (302) to the latest version
 - `FileSystemWatcher` invalidates the cache when directories are added/removed
@@ -36,7 +36,7 @@ All settings are in the `Shelf` section of `appsettings.json` or via environment
 | `DocsRoot` | `/data/docs` | Root directory for documentation files |
 | `ConfigRoot` | `/data/config` | Root directory for product config files |
 | `PathBase` | `""` | Global URL prefix (e.g. `/docs` to serve under `example.com/docs/`) |
-| `VersionPattern` | `^v\d+$` | Regex for valid version directory names |
+| `VersionPattern` | `^v?\d+(\.\d+(\.\d+(-[\w.]+)?)?)?$` | Regex for valid version directory names (SemVer) |
 | `BasePlaceholder` | `/__shelf__/` | Placeholder for non-root VitePress base paths |
 | `ApiKey` | `""` | API key for upload endpoint. Empty = upload disabled (503) |
 | `MaxUploadSizeBytes` | `104857600` | Max upload size (100 MB) |

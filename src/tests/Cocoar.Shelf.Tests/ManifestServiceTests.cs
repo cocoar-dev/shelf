@@ -82,6 +82,78 @@ public sealed class ManifestServiceTests : IDisposable
     }
 
     [Fact]
+    public void GetManifest_SupportsSemVerVersions()
+    {
+        var productDir = Path.Combine(_tempDir, "semver");
+        Directory.CreateDirectory(Path.Combine(productDir, "5.1.0"));
+        Directory.CreateDirectory(Path.Combine(productDir, "5.2.0"));
+        Directory.CreateDirectory(Path.Combine(productDir, "5.0.0"));
+
+        var result = _sut.GetManifest("semver");
+
+        Assert.NotNull(result);
+        Assert.Equal("5.2.0", result.Latest);
+        Assert.Equal(["5.2.0", "5.1.0", "5.0.0"], result.Versions);
+    }
+
+    [Fact]
+    public void GetManifest_SortsMajorMinorPatchCorrectly()
+    {
+        var productDir = Path.Combine(_tempDir, "sorting");
+        Directory.CreateDirectory(Path.Combine(productDir, "v1.0.0"));
+        Directory.CreateDirectory(Path.Combine(productDir, "v2.1.0"));
+        Directory.CreateDirectory(Path.Combine(productDir, "v2.0.3"));
+        Directory.CreateDirectory(Path.Combine(productDir, "v2.1.1"));
+
+        var result = _sut.GetManifest("sorting");
+
+        Assert.NotNull(result);
+        Assert.Equal("v2.1.1", result.Latest);
+        Assert.Equal(["v2.1.1", "v2.1.0", "v2.0.3", "v1.0.0"], result.Versions);
+    }
+
+    [Fact]
+    public void GetManifest_LatestPrefersStableOverPreRelease()
+    {
+        var productDir = Path.Combine(_tempDir, "prerelease");
+        Directory.CreateDirectory(Path.Combine(productDir, "v5.0.0"));
+        Directory.CreateDirectory(Path.Combine(productDir, "v6.0.0-beta.1"));
+
+        var result = _sut.GetManifest("prerelease");
+
+        Assert.NotNull(result);
+        Assert.Equal("v5.0.0", result.Latest);
+        Assert.Equal(["v6.0.0-beta.1", "v5.0.0"], result.Versions);
+    }
+
+    [Fact]
+    public void GetManifest_FallsBackToPreReleaseWhenNoStable()
+    {
+        var productDir = Path.Combine(_tempDir, "onlypre");
+        Directory.CreateDirectory(Path.Combine(productDir, "v1.0.0-alpha.1"));
+        Directory.CreateDirectory(Path.Combine(productDir, "v1.0.0-beta.1"));
+
+        var result = _sut.GetManifest("onlypre");
+
+        Assert.NotNull(result);
+        Assert.Equal("v1.0.0-beta.1", result.Latest);
+    }
+
+    [Fact]
+    public void GetManifest_SupportsMajorMinorWithoutPatch()
+    {
+        var productDir = Path.Combine(_tempDir, "majorminor");
+        Directory.CreateDirectory(Path.Combine(productDir, "v5.1"));
+        Directory.CreateDirectory(Path.Combine(productDir, "v5.2"));
+
+        var result = _sut.GetManifest("majorminor");
+
+        Assert.NotNull(result);
+        Assert.Equal("v5.2", result.Latest);
+        Assert.Equal(["v5.2", "v5.1"], result.Versions);
+    }
+
+    [Fact]
     public void GetManifest_ReturnsCachedResult_OnSecondCall()
     {
         var productDir = Path.Combine(_tempDir, "cached");
