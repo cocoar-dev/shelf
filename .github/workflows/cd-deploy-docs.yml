@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version (e.g. v1.0). Leave empty to use GitVersion major.minor.'
-        required: false
+        description: 'Version (e.g. v1.0, v1.1)'
+        required: true
 
 concurrency:
   group: deploy-docs
@@ -21,29 +21,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
-        with:
-          fetch-depth: 0
-          fetch-tags: true
-
-      - name: Install GitVersion
-        if: inputs.version == ''
-        uses: gittools/actions/gitversion/setup@v4
-        with:
-          versionSpec: '6.x'
-
-      - name: Calculate version
-        if: inputs.version == ''
-        id: gv
-        uses: gittools/actions/gitversion/execute@v4
-
-      - name: Determine version
-        id: version
-        run: |
-          if [ -n "${{ inputs.version }}" ]; then
-            echo "value=${{ inputs.version }}" >> $GITHUB_OUTPUT
-          else
-            echo "value=v${{ steps.gv.outputs.Major }}.${{ steps.gv.outputs.Minor }}" >> $GITHUB_OUTPUT
-          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -65,7 +42,7 @@ jobs:
         env:
           KEY: ${{ secrets.SHELF_API_KEY }}
           URL: ${{ secrets.SHELF_BASE_URL }}
-          VER: ${{ steps.version.outputs.value }}
+          VER: ${{ inputs.version }}
         run: |
           echo "Deploying shelf docs $VER to $URL"
           curl -f -X POST \
@@ -79,5 +56,5 @@ jobs:
           echo "### Docs Deployment Complete" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Product:** shelf" >> $GITHUB_STEP_SUMMARY
-          echo "**Version:** ${{ steps.version.outputs.value }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
           echo "**URL:** ${{ secrets.SHELF_BASE_URL }}/shelf/" >> $GITHUB_STEP_SUMMARY

@@ -161,3 +161,62 @@ jobs:
           echo "- \`latest\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`production\`" >> $GITHUB_STEP_SUMMARY
           echo "- \`${{ needs.validate-version.outputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+
+  deploy-docs:
+    name: Deploy Documentation
+    needs: [validate-version, deploy]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.release.tag_name }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        working-directory: website
+        run: npm ci
+
+      - name: Build VitePress
+        working-directory: website
+        run: npx vitepress build
+
+      - name: Package
+        run: cd website/.vitepress/dist && zip -r $GITHUB_WORKSPACE/docs.zip .
+
+      - name: Extract docs version
+        id: docs-version
+        env:
+          VERSION: ${{ needs.validate-version.outputs.version }}
+        run: |
+          MAJOR=$(echo "$VERSION" | cut -d. -f1)
+          MINOR=$(echo "$VERSION" | cut -d. -f2)
+          echo "value=v${MAJOR}.${MINOR}" >> $GITHUB_OUTPUT
+
+      - name: Upload to Shelf
+        env:
+          KEY: ${{ secrets.SHELF_API_KEY }}
+          URL: ${{ secrets.SHELF_BASE_URL }}
+          VER: ${{ steps.docs-version.outputs.value }}
+        run: |
+          echo "Deploying docs $VER to $URL"
+          curl -f -X POST \
+            -H "Authorization: Bearer $KEY" \
+            -H "Content-Type: application/zip" \
+            --data-binary @$GITHUB_WORKSPACE/docs.zip \
+            "${URL}/api/products/shelf/versions/${VER}"
+
+      - name: Docs deployment summary
+        run: |
+          echo "### Documentation Deployed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Product:** shelf" >> $GITHUB_STEP_SUMMARY
+          echo "**Version:** ${{ steps.docs-version.outputs.value }}" >> $GITHUB_STEP_SUMMARY
+          echo "**URL:** ${{ secrets.SHELF_BASE_URL }}/shelf/" >> $GITHUB_STEP_SUMMARY
