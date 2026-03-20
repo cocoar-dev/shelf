@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitepress'
+import llmstxt from 'vitepress-plugin-llms'
 
 export default defineConfig({
   title: 'Shelf',
@@ -6,7 +7,13 @@ export default defineConfig({
 
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo_light.svg' }],
+    ['link', { rel: 'alternate', type: 'text/plain', href: 'llms.txt', title: 'LLM documentation (summary)' }],
+    ['link', { rel: 'alternate', type: 'text/plain', href: 'llms-full.txt', title: 'LLM documentation (full)' }],
   ],
+
+  vite: {
+    plugins: [llmstxt()],
+  },
 
   themeConfig: {
     logo: {
@@ -18,6 +25,7 @@ export default defineConfig({
 
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
+      { text: 'LLM Docs', link: 'llms-full.txt' },
     ],
 
     sidebar: {
@@ -49,6 +57,7 @@ export default defineConfig({
             { text: 'URL Routing', link: '/guide/url-routing' },
             { text: 'Base Path Rewriting', link: '/guide/base-path-rewriting' },
             { text: 'Caching', link: '/guide/caching' },
+            { text: 'LLM Documentation', link: '/guide/llm-documentation' },
             { text: 'Troubleshooting', link: '/guide/troubleshooting' },
           ],
         },

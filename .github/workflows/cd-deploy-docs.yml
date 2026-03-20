@@ -58,15 +58,6 @@ jobs:
         working-directory: website
         run: npx vitepress build
 
-      - name: Export llms.txt
-        working-directory: website
-        run: npm run export
-
-      - name: Copy exports into dist
-        run: |
-          cp website/dist/llms.txt website/.vitepress/dist/
-          cp website/dist/llms-full.txt website/.vitepress/dist/
-
       - name: Package
         run: cd website/.vitepress/dist && zip -r $GITHUB_WORKSPACE/docs.zip .
 
