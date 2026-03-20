@@ -25,7 +25,7 @@ export default defineConfig({
 
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
-      { text: 'LLM Docs', link: 'llms-full.txt' },
+      { text: 'LLM Docs', link: '/llms-full.txt', target: '_blank' },
     ],
 
     sidebar: {
