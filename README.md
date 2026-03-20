@@ -13,6 +13,14 @@ Shelf is an ASP.NET Core application that serves VitePress-generated documentati
 - **LLM Documentation** — Serve `llms.txt` and `llms-full.txt` for AI-friendly docs
 - **Resilient File Monitoring** — Powered by [Cocoar.FileSystem](https://github.com/cocoar-dev/Cocoar.FileSystem)
 
+## Docker Image
+
+```bash
+docker pull ghcr.io/cocoar-dev/shelf:latest
+```
+
+Available tags: `latest`, `1`, `1.0`, `1.0.0`
+
 ## Quick Start
 
 ```yaml

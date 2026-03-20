@@ -8,7 +8,7 @@ Shelf runs as a Docker container with documentation and configuration files moun
 # docker-compose.yml
 services:
   shelf:
-    image: cocoar/shelf
+    image: ghcr.io/cocoar-dev/shelf:latest
     ports:
       - "80:8080"
     volumes:

@@ -18,7 +18,7 @@ Shelf is a static documentation hosting platform for Cocoar products. It serves 
 # docker-compose.yml
 services:
   shelf:
-    image: cocoar/shelf
+    image: ghcr.io/cocoar-dev/shelf:latest
     ports:
       - "80:8080"
     volumes:
