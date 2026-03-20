@@ -7,8 +7,8 @@ export default defineConfig({
 
   head: [
     ['link', { rel: 'icon', type: 'image/svg+xml', href: '/logo_light.svg' }],
-    ['link', { rel: 'alternate', type: 'text/plain', href: 'llms.txt', title: 'LLM documentation (summary)' }],
-    ['link', { rel: 'alternate', type: 'text/plain', href: 'llms-full.txt', title: 'LLM documentation (full)' }],
+    ['link', { rel: 'alternate', type: 'text/plain', href: '/llms.txt', title: 'LLM documentation (summary)' }],
+    ['link', { rel: 'alternate', type: 'text/plain', href: '/llms-full.txt', title: 'LLM documentation (full)' }],
   ],
 
   vite: {

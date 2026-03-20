@@ -29,11 +29,13 @@ Shelf serves these files like any other static file — just include them in you
 Add `<link>` tags to your HTML `<head>` so AI tools can find the LLM-optimized versions when they fetch any page:
 
 ```html
-<link rel="alternate" type="text/plain" href="llms.txt"
+<link rel="alternate" type="text/plain" href="/llms.txt"
       title="LLM documentation (summary)">
-<link rel="alternate" type="text/plain" href="llms-full.txt"
+<link rel="alternate" type="text/plain" href="/llms-full.txt"
       title="LLM documentation (full)">
 ```
+
+The leading `/` makes the path root-relative. Shelf's [base path rewriting](./base-path-rewriting.md) rewrites it to include the correct product/version prefix (e.g., `/configuration/v5/llms.txt`).
 
 This is similar to how RSS feeds are discoverable via `<link rel="alternate" type="application/rss+xml">`.
 
@@ -68,13 +70,13 @@ export default defineConfig({
     ['link', {
       rel: 'alternate',
       type: 'text/plain',
-      href: 'llms.txt',
+      href: '/llms.txt',
       title: 'LLM documentation (summary)'
     }],
     ['link', {
       rel: 'alternate',
       type: 'text/plain',
-      href: 'llms-full.txt',
+      href: '/llms-full.txt',
       title: 'LLM documentation (full)'
     }],
   ],
@@ -87,7 +89,7 @@ export default defineConfig({
   themeConfig: {
     nav: [
       // Visible link in the navigation bar
-      { text: 'LLM Docs', link: 'llms-full.txt' },
+      { text: 'LLM Docs', link: '/llms-full.txt', target: '_blank' },
     ],
   },
 })
