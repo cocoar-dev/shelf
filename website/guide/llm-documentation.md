@@ -97,11 +97,24 @@ export default defineConfig({
 
 That's it. When you run `vitepress build`, the plugin:
 
-1. Reads all Markdown pages from the sidebar
+1. Scans for Markdown pages in your project
 2. Generates `llms.txt` (summary with links) and `llms-full.txt` (complete documentation)
 3. Includes them in the build output
 
 The generated files end up in your deployment archive automatically.
+
+::: tip Verify Coverage
+After building, check the generated `llms-full.txt` to make sure all your pages are included. By default, the plugin may exclude some files it considers unnecessary. If pages are missing, try adjusting the plugin options:
+
+```ts
+llmstxt({
+  excludeUnnecessaryFiles: false,  // include all pages
+  ignoreFiles: ['changelog.md'],   // explicitly exclude specific files
+})
+```
+
+See the [plugin documentation](https://github.com/okineadev/vitepress-plugin-llms) for all available options.
+:::
 
 ### Shelf Integration
 
