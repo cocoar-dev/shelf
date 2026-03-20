@@ -55,6 +55,10 @@ Access at `http://localhost/configuration/` (redirects to latest version).
 
 Full documentation is available at **[docs.cocoar.dev/shelf](https://docs.cocoar.dev/shelf/)**.
 
+## Live Example
+
+Shelf hosts its own documentation (and the docs for other Cocoar products) at **[docs.cocoar.dev](https://docs.cocoar.dev/)**.
+
 ## Development
 
 ```bash
