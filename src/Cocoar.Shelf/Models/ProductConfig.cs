@@ -9,4 +9,6 @@ public class ProductConfig
     public string? Description { get; init; }
 
     public string Source { get; init; } = "upload";
+
+    public string Visibility { get; init; } = "public";
 }

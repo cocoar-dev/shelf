@@ -14,13 +14,14 @@ public static partial class ApiEndpoints
     {
         var api = app.MapGroup("/_api");
 
+        // Auth endpoints (cookie-based)
+        api.MapAuthEndpoints();
+
         // Public read endpoints
         api.MapGet("/products", GetProducts);
         api.MapGet("/products/{product}/versions", GetVersions);
 
-        // Protected write endpoints
-        api.MapGet("/admin/verify", () => Results.Ok(new { ok = true }))
-            .AddEndpointFilter<ApiKeyFilter>();
+        // Protected write endpoints (cookie or Bearer API key)
         api.MapPost("/products", CreateProduct)
             .AddEndpointFilter<ApiKeyFilter>();
         api.MapPut("/products/{product}", UpdateProduct)
@@ -52,6 +53,7 @@ public static partial class ApiEndpoints
                     config.DisplayName,
                     config.Description,
                     config.Source,
+                    config.Visibility,
                     Latest = manifest?.Latest,
                     Versions = manifest?.Versions ?? (IReadOnlyList<string>)[]
                 };
@@ -249,7 +251,8 @@ public static partial class ApiEndpoints
                 Name = request.Name,
                 DisplayName = request.DisplayName,
                 Description = request.Description,
-                Source = request.Source ?? "upload"
+                Source = request.Source ?? "upload",
+                Visibility = request.Visibility ?? "public"
             };
 
             await configService.CreateAsync(config);
@@ -284,7 +287,8 @@ public static partial class ApiEndpoints
                 Name = product,
                 DisplayName = request.DisplayName ?? existing.DisplayName,
                 Description = request.Description ?? existing.Description,
-                Source = request.Source ?? existing.Source
+                Source = request.Source ?? existing.Source,
+                Visibility = request.Visibility ?? existing.Visibility
             };
 
             await configService.UpdateAsync(config);

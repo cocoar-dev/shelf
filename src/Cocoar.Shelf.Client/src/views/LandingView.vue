@@ -4,24 +4,37 @@
       <h1>Documentation</h1>
     </header>
 
+    <div class="landing-toolbar" v-if="previewCount > 0">
+      <label class="filter-toggle">
+        <input type="checkbox" v-model="showPreview" />
+        <span>Show preview ({{ previewCount }})</span>
+      </label>
+    </div>
+
     <div class="landing-grid">
       <a
-        v-for="product in products"
+        v-for="product in visibleProducts"
         :key="product.name"
         :href="`/${product.name}/`"
         class="product-card"
         target="_blank"
       >
-        <div class="card-name">{{ product.displayName || product.name }}</div>
+        <div class="card-title-row">
+          <div class="card-name">{{ product.displayName || product.name }}</div>
+          <span v-if="isPreviewProduct(product)" class="preview-badge">preview</span>
+        </div>
         <div v-if="product.description" class="card-desc">{{ product.description }}</div>
-        <div v-if="product.versions.length > 0" class="card-versions">
+        <div v-if="visibleVersions(product).length > 0" class="card-versions">
           <a
-            v-for="v in product.versions"
+            v-for="v in visibleVersions(product)"
             :key="v"
             :href="`/${product.name}/${v}/`"
             target="_blank"
             class="version-badge"
-            :class="{ 'version-badge--latest': v === product.latest }"
+            :class="{
+              'version-badge--latest': v === product.latest,
+              'version-badge--prerelease': isPreRelease(v),
+            }"
             @click.stop
           >
             {{ v }}
@@ -30,25 +43,60 @@
       </a>
     </div>
 
-    <div v-if="!isLoading && products.length === 0" class="landing-empty">
+    <div v-if="!isLoading && visibleProducts.length === 0" class="landing-empty">
       No documentation available yet.
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
 import type { Product } from '@/core/models/shelf.models';
 
-const products = ref<Product[]>([]);
+const allProducts = ref<Product[]>([]);
 const isLoading = ref(true);
+const showPreview = ref(false);
+
+function isPreRelease(version: string): boolean {
+  return version.includes('-');
+}
+
+function hasStableVersion(product: Product): boolean {
+  return product.versions.some(v => !isPreRelease(v));
+}
+
+function isPreviewProduct(product: Product): boolean {
+  return product.visibility === 'preview' || !hasStableVersion(product);
+}
+
+function visibleVersions(product: Product): string[] {
+  if (showPreview.value) return product.versions;
+  return product.versions.filter(v => !isPreRelease(v));
+}
+
+const productsWithVersions = computed(() =>
+  allProducts.value.filter(p => p.versions.length > 0)
+);
+
+const previewCount = computed(() =>
+  productsWithVersions.value.filter(p => isPreviewProduct(p)).length
+);
+
+const visibleProducts = computed(() => {
+  if (showPreview.value) return productsWithVersions.value;
+
+  return productsWithVersions.value.filter(p => {
+    // Show if product is public AND has at least one stable version
+    if (p.visibility === 'preview') return false;
+    return hasStableVersion(p);
+  });
+});
 
 onMounted(async () => {
   try {
     const response = await fetch('/_api/products');
     if (response.ok) {
-      const all: Product[] = await response.json();
-      products.value = all.filter(p => p.versions.length > 0);
+      allProducts.value = await response.json();
     }
   } finally {
     isLoading.value = false;
@@ -75,12 +123,34 @@ onMounted(async () => {
   margin: 0;
 }
 
+.landing-toolbar {
+  max-width: 1200px;
+  margin: 24px auto 0;
+  padding: 0 24px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.filter-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: #64748b;
+  cursor: pointer;
+  user-select: none;
+}
+
+.filter-toggle input {
+  cursor: pointer;
+}
+
 .landing-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 20px;
   max-width: 1200px;
-  margin: 40px auto;
+  margin: 20px auto 40px;
   padding: 0 24px;
 }
 
@@ -101,14 +171,30 @@ onMounted(async () => {
   box-shadow: 0 2px 8px rgba(17, 131, 205, 0.12);
 }
 
+.card-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
 .card-name {
   font-size: 1.15em;
   font-weight: 600;
   color: #1183CD;
-  margin-bottom: 6px;
 }
 
 .product-card:hover .card-name { color: #0E6DB0; }
+
+.preview-badge {
+  font-size: 0.7em;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fde68a;
+}
 
 .card-desc {
   font-size: 0.9em;
@@ -151,6 +237,10 @@ onMounted(async () => {
 }
 
 .version-badge--latest:hover { background: #bfdbfe; }
+
+.version-badge--prerelease {
+  border-style: dashed;
+}
 
 .landing-empty {
   text-align: center;

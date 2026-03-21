@@ -15,6 +15,10 @@ declare module '@cocoar/vue-ui' {
   export const CoarIcon: Component;
   export const CoarNote: Component;
   export const CoarOverlayHost: Component;
+  export const CoarSelect: Component;
+  export const CoarSpinner: Component;
+  export const CoarTable: Component;
+  export const CoarTag: Component;
   export const CoarTextInput: Component;
 }
 

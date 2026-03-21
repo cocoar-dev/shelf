@@ -6,6 +6,7 @@ using Cocoar.Shelf.Endpoints;
 using Cocoar.Shelf.Middleware;
 using Cocoar.Shelf.Services;
 using System.Globalization;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
 
@@ -22,7 +23,7 @@ builder.AddCocoarConfiguration(c => c
     ]));
 
 var configManager = builder.GetCocoarConfigManager();
-var config = configManager.GetConfig<ShelfOptions>();
+var config = configManager.GetConfig<ShelfOptions>()!;
 
 builder.Services.AddSerilog(logConfig =>
 {
@@ -39,8 +40,24 @@ builder.Services.AddSerilog(logConfig =>
         }
     }
 
-    logConfig.WriteTo.Console(theme: AnsiConsoleTheme.Code);
+    logConfig.WriteTo.Console(theme: AnsiConsoleTheme.Code, formatProvider: CultureInfo.InvariantCulture);
 });
+
+builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = "shelf.auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.ExpireTimeSpan = TimeSpan.FromHours(12);
+        options.SlidingExpiration = true;
+        options.Events.OnRedirectToLogin = context =>
+        {
+            context.Response.StatusCode = 401;
+            return Task.CompletedTask;
+        };
+    });
+builder.Services.AddAuthorization();
 
 builder.Services.AddSingleton<IManifestService, ManifestService>();
 builder.Services.AddSingleton<IProductConfigService, ProductConfigService>();
@@ -52,11 +69,14 @@ var app = builder.Build();
 if (!string.IsNullOrEmpty(config.PathBase))
     app.UsePathBase(config.PathBase);
 
-app.UseMiddleware<SpaFallbackMiddleware>();
 app.UseSerilogRequestLogging();
 app.UseStaticFiles();
+app.UseAuthentication();
+app.UseAuthorization();
 app.MapApiEndpoints();
+app.MapLlmsTxt();
 app.UseMiddleware<DocsRoutingMiddleware>();
+app.MapFallbackToFile("index.html");
 
 app.Run(config.AppUrl);
 

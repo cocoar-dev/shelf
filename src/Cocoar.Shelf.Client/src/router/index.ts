@@ -28,8 +28,17 @@ export const router = createRouter({
   ],
 });
 
-router.beforeEach((to) => {
+let sessionChecked = false;
+
+router.beforeEach(async (to) => {
   const auth = useAuthStore();
+
+  // Check session once on first navigation (handles page refresh)
+  if (!sessionChecked) {
+    sessionChecked = true;
+    await auth.checkSession();
+  }
+
   if (!to.meta.public && !auth.isAuthenticated) {
     return '/login';
   }

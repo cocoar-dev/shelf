@@ -2,31 +2,60 @@ import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 
 export const useAuthStore = defineStore('auth', () => {
-  const apiKey = ref<string | null>(sessionStorage.getItem('shelf_api_key'));
-  const isAuthenticated = computed(() => !!apiKey.value);
+  const isAuthenticated = ref(false);
+  const userName = ref<string | null>(null);
 
-  async function login(key: string): Promise<boolean> {
-    apiKey.value = key;
+  async function checkSession(): Promise<boolean> {
     try {
-      const response = await fetch('/_api/admin/verify', {
-        headers: { 'Authorization': `Bearer ${key}` },
-      });
+      const response = await fetch('/_api/auth/me', { credentials: 'include' });
       if (response.ok) {
-        sessionStorage.setItem('shelf_api_key', key);
+        const data = await response.json();
+        isAuthenticated.value = data.authenticated;
+        userName.value = data.name;
         return true;
       }
-      apiKey.value = null;
+      isAuthenticated.value = false;
+      userName.value = null;
       return false;
     } catch {
-      apiKey.value = null;
+      isAuthenticated.value = false;
+      userName.value = null;
       return false;
     }
   }
 
-  function logout() {
-    apiKey.value = null;
-    sessionStorage.removeItem('shelf_api_key');
+  async function login(apiKey: string): Promise<boolean> {
+    try {
+      const response = await fetch('/_api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ apiKey }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        isAuthenticated.value = true;
+        userName.value = data.name;
+        return true;
+      }
+      return false;
+    } catch {
+      return false;
+    }
   }
 
-  return { apiKey, isAuthenticated, login, logout };
+  async function logout() {
+    try {
+      await fetch('/_api/auth/logout', {
+        method: 'POST',
+        credentials: 'include',
+      });
+    } finally {
+      isAuthenticated.value = false;
+      userName.value = null;
+    }
+  }
+
+  return { isAuthenticated, userName, checkSession, login, logout };
 });

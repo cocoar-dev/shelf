@@ -23,9 +23,17 @@
           <span class="info-value">{{ product.source }}</span>
         </div>
         <div class="info-row">
+          <span class="info-label">Visibility</span>
+          <span class="info-value">
+            <CoarTag :variant="product.visibility === 'preview' ? 'warning' : 'success'" size="s">
+              {{ product.visibility }}
+            </CoarTag>
+          </span>
+        </div>
+        <div class="info-row">
           <span class="info-label">Latest Version</span>
           <span class="info-value">
-            <span v-if="product.latest" class="badge badge--accent">{{ product.latest }}</span>
+            <CoarTag v-if="product.latest" variant="accent" size="s">{{ product.latest }}</CoarTag>
             <span v-else>—</span>
           </span>
         </div>
@@ -58,7 +66,7 @@
 
     <!-- Versions -->
     <CoarCard v-if="product && product.versions.length > 0" title="Versions">
-      <table class="data-table">
+      <CoarTable variant="plain" hover>
         <thead>
           <tr>
             <th>Version</th>
@@ -68,16 +76,16 @@
         </thead>
         <tbody>
           <tr v-for="v in product.versions" :key="v">
-            <td class="cell-name">
-              <a :href="`/${product.name}/${v}/`" target="_blank">{{ v }}</a>
+            <td>
+              <a :href="`/${product.name}/${v}/`" target="_blank" class="version-link">{{ v }}</a>
             </td>
             <td>
-              <span v-if="v === product.latest" class="badge badge--accent">latest</span>
+              <CoarTag v-if="v === product.latest" variant="accent" size="s">latest</CoarTag>
             </td>
             <td class="cell-actions">
               <CoarButton
                 variant="danger"
-                size="small"
+                size="s"
                 :loading="deletingVersion === v"
                 @click="onDeleteVersion(v)"
               >
@@ -86,17 +94,19 @@
             </td>
           </tr>
         </tbody>
-      </table>
+      </CoarTable>
     </CoarCard>
   </div>
 
-  <div v-else class="loading-text">Loading...</div>
+  <div v-else class="center-content">
+    <CoarSpinner size="m" label="Loading product..." />
+  </div>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { CoarCard, CoarButton, CoarTextInput, CoarNote } from '@cocoar/vue-ui';
+import { CoarCard, CoarButton, CoarTextInput, CoarNote, CoarTable, CoarTag, CoarSpinner } from '@cocoar/vue-ui';
 import { useUI } from '@/composables/useUI';
 import { shelfApi } from '@/core/api/shelf-api';
 import { ApiError } from '@/core/api/http';
@@ -257,54 +267,15 @@ async function onDeleteProduct() {
   margin-bottom: 6px;
 }
 
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-.data-table th {
-  text-align: left;
-  padding: 8px 12px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: var(--coar-text-neutral-secondary);
-  border-bottom: 1px solid var(--coar-border-neutral-tertiary);
-}
-
-.data-table td {
-  padding: 10px 12px;
-  font-size: 0.9rem;
-  color: var(--coar-text-neutral-primary);
-  border-bottom: 1px solid var(--coar-border-neutral-tertiary);
-}
-
-.data-table tbody tr:last-child td { border-bottom: none; }
-
-.cell-name a {
+.version-link {
   color: var(--coar-text-accent-primary);
   text-decoration: none;
   font-weight: 500;
 }
-.cell-name a:hover { text-decoration: underline; }
+.version-link:hover { text-decoration: underline; }
 
 .cell-actions { text-align: right; }
 
-.badge {
-  display: inline-block;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 0.78rem;
-  font-weight: 500;
-  background: var(--coar-background-neutral-secondary);
-  color: var(--coar-text-neutral-secondary);
-}
-
-.badge--accent {
-  background: var(--coar-background-accent-tertiary);
-  color: var(--coar-text-accent-primary);
-  font-weight: 600;
-}
-
 .mb-4 { margin-bottom: 16px; }
-.loading-text { color: var(--coar-text-neutral-secondary); padding: 32px 0; text-align: center; }
+.center-content { display: flex; justify-content: center; padding: 48px 0; }
 </style>

@@ -14,20 +14,21 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     ...(init.headers as Record<string, string>),
   };
 
-  const auth = useAuthStore();
-  if (auth.apiKey) {
-    headers['Authorization'] = `Bearer ${auth.apiKey}`;
-  }
-
   if (init.body && typeof init.body === 'string') {
     headers['Content-Type'] = 'application/json';
   }
 
-  const response = await fetch(`/_api${path}`, { ...init, headers });
+  const response = await fetch(`/_api${path}`, {
+    ...init,
+    headers,
+    credentials: 'include',
+  });
 
   if (!response.ok) {
     if (response.status === 401) {
-      auth.logout();
+      const auth = useAuthStore();
+      auth.isAuthenticated = false;
+      auth.userName = null;
       router.push('/login');
     }
     const contentType = response.headers.get('content-type') ?? '';
@@ -51,10 +52,10 @@ export const http = {
   put: <T>(path: string, body?: unknown) =>
     request<T>(path, { method: 'PUT', body: body !== undefined ? JSON.stringify(body) : undefined }),
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
-  upload: <T>(path: string, file: File | Blob) => {
-    const headers: Record<string, string> = { 'Content-Type': 'application/zip' };
-    const auth = useAuthStore();
-    if (auth.apiKey) headers['Authorization'] = `Bearer ${auth.apiKey}`;
-    return request<T>(path, { method: 'POST', body: file, headers });
-  },
+  upload: <T>(path: string, file: File | Blob) =>
+    request<T>(path, {
+      method: 'POST',
+      body: file,
+      headers: { 'Content-Type': 'application/zip' },
+    }),
 };

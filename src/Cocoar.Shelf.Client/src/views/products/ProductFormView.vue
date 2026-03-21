@@ -2,6 +2,10 @@
   <div>
     <CoarNote v-if="error" variant="error" class="mb-4">{{ error }}</CoarNote>
 
+    <div v-if="isLoading" class="center-content">
+      <CoarSpinner size="m" />
+    </div>
+
     <div v-if="!isLoading" class="form-grid">
       <div class="form-main">
         <CoarCard title="Product Details">
@@ -29,12 +33,20 @@
 
       <div class="form-side">
         <CoarCard title="Settings">
-          <CoarTextInput
-            v-model="form.source"
-            label="Source"
-            placeholder="upload"
-          />
-          <p class="hint">Deployment source type (e.g., "upload")</p>
+          <div class="form-fields">
+            <CoarSelect
+              v-model="form.visibility"
+              label="Visibility"
+              :options="visibilityOptions"
+              hint="Preview products are hidden on the landing page by default"
+            />
+            <CoarTextInput
+              v-model="form.source"
+              label="Source"
+              placeholder="upload"
+              hint="Deployment source type (e.g., &quot;upload&quot;)"
+            />
+          </div>
         </CoarCard>
       </div>
     </div>
@@ -44,7 +56,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { CoarCard, CoarTextInput, CoarNote } from '@cocoar/vue-ui';
+import { CoarCard, CoarTextInput, CoarSelect, CoarNote, CoarSpinner } from '@cocoar/vue-ui';
 import { useUI } from '@/composables/useUI';
 import { shelfApi } from '@/core/api/shelf-api';
 import { ApiError } from '@/core/api/http';
@@ -59,11 +71,17 @@ const isLoading = ref(false);
 const isSaving = ref(false);
 const error = ref('');
 
+const visibilityOptions = [
+  { value: 'public', label: 'Public' },
+  { value: 'preview', label: 'Preview' },
+];
+
 const form = ref({
   name: '',
   displayName: '',
   description: '',
   source: 'upload',
+  visibility: 'public',
 });
 
 ui.set(ctx => {
@@ -95,6 +113,7 @@ onMounted(async () => {
       form.value.displayName = product.displayName ?? '';
       form.value.description = product.description ?? '';
       form.value.source = product.source;
+      form.value.visibility = product.visibility;
     } else {
       error.value = `Product '${name.value}' not found`;
     }
@@ -115,6 +134,7 @@ async function onSubmit() {
         displayName: form.value.displayName || undefined,
         description: form.value.description || undefined,
         source: form.value.source || undefined,
+        visibility: form.value.visibility,
       });
       router.push(`/admin/products/${name.value}`);
     } else {
@@ -123,6 +143,7 @@ async function onSubmit() {
         displayName: form.value.displayName || undefined,
         description: form.value.description || undefined,
         source: form.value.source || undefined,
+        visibility: form.value.visibility,
       });
       router.push(`/admin/products/${form.value.name}`);
     }
@@ -151,11 +172,6 @@ async function onSubmit() {
   gap: 16px;
 }
 
-.hint {
-  font-size: 0.8rem;
-  color: var(--coar-text-neutral-secondary);
-  margin: 8px 0 0;
-}
-
 .mb-4 { margin-bottom: 16px; }
+.center-content { display: flex; justify-content: center; padding: 48px 0; }
 </style>

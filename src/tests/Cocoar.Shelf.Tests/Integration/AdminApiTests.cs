@@ -35,24 +35,44 @@ public class AdminApiTests
         return await _client.SendAsync(request);
     }
 
-    #region Auth Verify
+    #region Auth
 
     [Fact]
-    public async Task Verify_Returns200_WithValidKey()
+    public async Task Login_Returns200_WithValidKey()
     {
-        var request = Auth(new HttpRequestMessage(HttpMethod.Get, "/_api/admin/verify"));
-
-        var response = await _client.SendAsync(request);
+        var response = await _client.PostAsync("/_api/auth/login", Json(new { apiKey = _fixture.ApiKey }));
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.Contains("Set-Cookie"));
     }
 
     [Fact]
-    public async Task Verify_Returns401_WithoutKey()
+    public async Task Login_Returns401_WithWrongKey()
     {
-        var response = await _client.GetAsync("/_api/admin/verify");
+        var response = await _client.PostAsync("/_api/auth/login", Json(new { apiKey = "wrong" }));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Me_Returns401_WhenNotLoggedIn()
+    {
+        var response = await _client.GetAsync("/_api/auth/me");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task BearerToken_StillWorksForCiCd()
+    {
+        var request = Auth(new HttpRequestMessage(HttpMethod.Post, "/_api/products")
+        {
+            Content = Json(new { name = "bearer-test-1" })
+        });
+
+        var response = await _client.SendAsync(request);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
     #endregion

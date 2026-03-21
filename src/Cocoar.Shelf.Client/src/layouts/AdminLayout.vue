@@ -88,8 +88,8 @@ const router = useRouter();
 const ui = useUI();
 const auth = useAuthStore();
 
-function onLogout() {
-  auth.logout();
+async function onLogout() {
+  await auth.logout();
   router.push('/login');
 }
 </script>
