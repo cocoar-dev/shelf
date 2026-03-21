@@ -1,7 +1,6 @@
 using System.IO.Compression;
 using Cocoar.Shelf.Services;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace Cocoar.Shelf.Tests;
 
@@ -15,8 +14,8 @@ public sealed class UploadServiceTests : IDisposable
         _docsRoot = Path.Combine(Path.GetTempPath(), $"shelf-upload-tests-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_docsRoot);
 
-        var options = Options.Create(new ShelfOptions { DocsRoot = _docsRoot });
-        _sut = new UploadService(options, NullLogger<UploadService>.Instance);
+        var config = new TestReactiveConfig<ShelfOptions>(new ShelfOptions { DocsRoot = _docsRoot });
+        _sut = new UploadService(config, NullLogger<UploadService>.Instance);
     }
 
     [Fact]

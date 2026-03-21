@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Cocoar.Configuration.Reactive;
 using Cocoar.FileSystem;
 using Cocoar.Shelf.Models;
-using Microsoft.Extensions.Options;
 
 namespace Cocoar.Shelf.Services;
 
@@ -20,10 +20,10 @@ public sealed partial class ProductConfigService : IProductConfigService, IDispo
         AllowTrailingCommas = true
     };
 
-    public ProductConfigService(IOptions<ShelfOptions> options, ILogger<ProductConfigService> logger)
+    public ProductConfigService(IReactiveConfig<ShelfOptions> config, ILogger<ProductConfigService> logger)
     {
         _logger = logger;
-        _productsDir = Path.Combine(options.Value.ConfigRoot, "products");
+        _productsDir = Path.Combine(config.CurrentValue.ConfigRoot, "products");
 
         if (!Directory.Exists(_productsDir))
         {

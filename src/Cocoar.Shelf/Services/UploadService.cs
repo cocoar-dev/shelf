@@ -1,18 +1,18 @@
 using System.Collections.Concurrent;
 using System.IO.Compression;
-using Microsoft.Extensions.Options;
+using Cocoar.Configuration.Reactive;
 
 namespace Cocoar.Shelf.Services;
 
 public sealed partial class UploadService : IUploadService
 {
-    private readonly ShelfOptions _options;
+    private readonly IReactiveConfig<ShelfOptions> _config;
     private readonly ILogger<UploadService> _logger;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
-    public UploadService(IOptions<ShelfOptions> options, ILogger<UploadService> logger)
+    public UploadService(IReactiveConfig<ShelfOptions> config, ILogger<UploadService> logger)
     {
-        _options = options.Value;
+        _config = config;
         _logger = logger;
     }
 
@@ -24,7 +24,7 @@ public sealed partial class UploadService : IUploadService
         if (!await semaphore.WaitAsync(0, ct))
             return new UploadResult(UploadStatus.VersionConflict, "Upload for this version is already in progress");
 
-        var tempDir = Path.Combine(_options.DocsRoot, ".shelf-tmp", Guid.NewGuid().ToString("N"));
+        var tempDir = Path.Combine(_config.CurrentValue.DocsRoot, ".shelf-tmp", Guid.NewGuid().ToString("N"));
 
         try
         {
@@ -66,15 +66,15 @@ public sealed partial class UploadService : IUploadService
                 return new UploadResult(UploadStatus.MissingIndexHtml, "Archive must contain an index.html at the root");
 
             // Ensure product directory exists
-            var productDir = Path.Combine(_options.DocsRoot, product);
+            var productDir = Path.Combine(_config.CurrentValue.DocsRoot, product);
             Directory.CreateDirectory(productDir);
 
             // Atomic move: swap existing version if present
-            var destVersionDir = Path.Combine(_options.DocsRoot, product, version);
+            var destVersionDir = Path.Combine(_config.CurrentValue.DocsRoot, product, version);
 
             if (Directory.Exists(destVersionDir))
             {
-                var oldDir = Path.Combine(_options.DocsRoot, ".shelf-tmp", $"old-{Guid.NewGuid():N}");
+                var oldDir = Path.Combine(_config.CurrentValue.DocsRoot, ".shelf-tmp", $"old-{Guid.NewGuid():N}");
                 Directory.Move(destVersionDir, oldDir);
 
                 try { Directory.Delete(oldDir, recursive: true); }
@@ -88,7 +88,7 @@ public sealed partial class UploadService : IUploadService
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            LogUploadFailed(product, version, ex.Message);
+            LogUploadFailed(product, version, ex);
             return new UploadResult(UploadStatus.InvalidArchive, $"Upload failed: {ex.Message}");
         }
         finally
@@ -107,6 +107,6 @@ public sealed partial class UploadService : IUploadService
     [LoggerMessage(Level = LogLevel.Information, Message = "Version deployed: {Product}/{Version}")]
     private partial void LogVersionDeployed(string product, string version);
 
-    [LoggerMessage(Level = LogLevel.Error, Message = "Upload failed for {Product}/{Version}: {Error}")]
-    private partial void LogUploadFailed(string product, string version, string error);
+    [LoggerMessage(Level = LogLevel.Error, Message = "Upload failed for {Product}/{Version}")]
+    private partial void LogUploadFailed(string product, string version, Exception ex);
 }

@@ -1,27 +1,56 @@
+using Cocoar.Configuration.AspNetCore;
+using Cocoar.Configuration.Providers;
+using Cocoar.Configuration.Reactive;
 using Cocoar.Shelf;
 using Cocoar.Shelf.Endpoints;
 using Cocoar.Shelf.Middleware;
 using Cocoar.Shelf.Services;
-using Microsoft.Extensions.Options;
+using System.Globalization;
+using Serilog;
 
-var builder = WebApplication.CreateBuilder(args);
+Log.Logger = new LoggerConfiguration()
+    .WriteTo.Console(formatProvider: CultureInfo.InvariantCulture)
+    .CreateBootstrapLogger();
 
-builder.Services.Configure<ShelfOptions>(builder.Configuration.GetSection("Shelf"));
-builder.Services.AddSingleton<IManifestService, ManifestService>();
-builder.Services.AddSingleton<IProductConfigService, ProductConfigService>();
-builder.Services.AddSingleton<IUploadService, UploadService>();
-builder.Services.AddSingleton<BasePathDetector>();
+try
+{
+    var builder = WebApplication.CreateBuilder(args);
 
-var app = builder.Build();
+    builder.Host.UseSerilog((context, config) => config
+        .ReadFrom.Configuration(context.Configuration));
 
-var shelfOptions = app.Services.GetRequiredService<IOptions<ShelfOptions>>().Value;
-if (!string.IsNullOrEmpty(shelfOptions.PathBase))
-    app.UsePathBase(shelfOptions.PathBase);
+    builder.AddCocoarConfiguration(c => c
+        .UseConfiguration(rules => [
+            rules.For<ShelfOptions>().FromFile("appsettings.json").Select("Shelf"),
+            rules.For<ShelfOptions>().FromEnvironment("Shelf__")
+        ]));
 
-if (shelfOptions.EnableLandingPage)
-    app.MapGet("/", LandingPageEndpoint.Render);
+    builder.Services.AddSingleton<IManifestService, ManifestService>();
+    builder.Services.AddSingleton<IProductConfigService, ProductConfigService>();
+    builder.Services.AddSingleton<IUploadService, UploadService>();
+    builder.Services.AddSingleton<BasePathDetector>();
 
-app.MapApiEndpoints();
-app.UseMiddleware<DocsRoutingMiddleware>();
+    var app = builder.Build();
 
-app.Run();
+    var shelfOptions = app.Services.GetRequiredService<IReactiveConfig<ShelfOptions>>().CurrentValue;
+    if (!string.IsNullOrEmpty(shelfOptions.PathBase))
+        app.UsePathBase(shelfOptions.PathBase);
+
+    if (shelfOptions.EnableLandingPage)
+        app.MapGet("/", LandingPageEndpoint.Render);
+
+    app.UseSerilogRequestLogging();
+
+    app.MapApiEndpoints();
+    app.UseMiddleware<DocsRoutingMiddleware>();
+
+    app.Run();
+}
+catch (Exception ex) when (ex is not HostAbortedException)
+{
+    Log.Fatal(ex, "Application terminated unexpectedly");
+}
+finally
+{
+    Log.CloseAndFlush();
+}

@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
+using Cocoar.Configuration.Reactive;
 using Cocoar.Shelf.Services;
 using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.Options;
 
 namespace Cocoar.Shelf.Middleware;
 
@@ -10,7 +10,7 @@ public partial class DocsRoutingMiddleware
     private readonly RequestDelegate _next;
     private readonly IManifestService _manifestService;
     private readonly BasePathDetector _basePathDetector;
-    private readonly ShelfOptions _options;
+    private readonly IReactiveConfig<ShelfOptions> _config;
     private readonly FileExtensionContentTypeProvider _contentTypeProvider = new();
     private readonly Regex _versionRegex;
 
@@ -18,13 +18,13 @@ public partial class DocsRoutingMiddleware
         RequestDelegate next,
         IManifestService manifestService,
         BasePathDetector basePathDetector,
-        IOptions<ShelfOptions> options)
+        IReactiveConfig<ShelfOptions> config)
     {
         _next = next;
         _manifestService = manifestService;
         _basePathDetector = basePathDetector;
-        _options = options.Value;
-        _versionRegex = new Regex(_options.VersionPattern, RegexOptions.Compiled);
+        _config = config;
+        _versionRegex = new Regex(_config.CurrentValue.VersionPattern, RegexOptions.Compiled);
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -45,7 +45,7 @@ public partial class DocsRoutingMiddleware
 
         var segments = path.Split('/', 2);
         var product = segments[0];
-        var productDir = Path.Combine(_options.DocsRoot, product);
+        var productDir = Path.Combine(_config.CurrentValue.DocsRoot, product);
 
         if (!Directory.Exists(productDir))
         {
@@ -91,7 +91,7 @@ public partial class DocsRoutingMiddleware
         resolvedPath = Path.GetFullPath(resolvedPath);
 
         // Security: prevent path traversal outside docs root
-        var docsRootFull = Path.GetFullPath(_options.DocsRoot);
+        var docsRootFull = Path.GetFullPath(_config.CurrentValue.DocsRoot);
         if (!resolvedPath.StartsWith(docsRootFull, StringComparison.OrdinalIgnoreCase))
         {
             context.Response.StatusCode = 400;
