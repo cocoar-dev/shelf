@@ -43,6 +43,13 @@ public partial class DocsRoutingMiddleware
             return;
         }
 
+        // Reserved prefixes — never interpret as product names
+        if (path.StartsWith('_'))
+        {
+            await _next(context);
+            return;
+        }
+
         var segments = path.Split('/', 2);
         var product = segments[0];
         var productDir = Path.Combine(_config.CurrentValue.DocsRoot, product);
@@ -52,6 +59,9 @@ public partial class DocsRoutingMiddleware
             await _next(context);
             return;
         }
+
+        // Mark this request as handled by docs routing (prevents SPA fallback)
+        context.Items["DocsRouted"] = true;
 
         var rest = segments.Length > 1 ? segments[1] : "";
         string resolvedPath;

@@ -69,6 +69,15 @@ jobs:
             --password ${{ secrets.PERSONAL_PACKAGES_TOKEN }} \
             --store-password-in-clear-text
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build Admin UI
+        working-directory: ./src/Cocoar.Shelf.Client
+        run: npm ci && npm run build
+
       - name: Restore dependencies
         run: dotnet restore Cocoar.Shelf.slnx
         working-directory: ./src
@@ -211,7 +220,7 @@ jobs:
             -H "Authorization: Bearer $KEY" \
             -H "Content-Type: application/zip" \
             --data-binary @$GITHUB_WORKSPACE/docs.zip \
-            "${URL}/api/products/shelf/versions/${VER}"
+            "${URL}/_api/products/shelf/versions/${VER}"
 
       - name: Docs deployment summary
         run: |

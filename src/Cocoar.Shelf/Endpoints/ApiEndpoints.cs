@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Cocoar.Shelf.Models;
 using Cocoar.Shelf.Services;
 using Microsoft.AspNetCore.Http.Features;
 
@@ -6,13 +7,29 @@ namespace Cocoar.Shelf.Endpoints;
 
 public static partial class ApiEndpoints
 {
+    private static readonly Regex ProductNameRegex = new("^[a-z0-9][a-z0-9-]*$", RegexOptions.Compiled);
+    private static readonly HashSet<string> ReservedNames = new(StringComparer.OrdinalIgnoreCase) { "admin", "api" };
+
     public static WebApplication MapApiEndpoints(this WebApplication app)
     {
-        var api = app.MapGroup("/api");
+        var api = app.MapGroup("/_api");
 
+        // Public read endpoints
         api.MapGet("/products", GetProducts);
         api.MapGet("/products/{product}/versions", GetVersions);
+
+        // Protected write endpoints
+        api.MapGet("/admin/verify", () => Results.Ok(new { ok = true }))
+            .AddEndpointFilter<ApiKeyFilter>();
+        api.MapPost("/products", CreateProduct)
+            .AddEndpointFilter<ApiKeyFilter>();
+        api.MapPut("/products/{product}", UpdateProduct)
+            .AddEndpointFilter<ApiKeyFilter>();
+        api.MapDelete("/products/{product}", DeleteProduct)
+            .AddEndpointFilter<ApiKeyFilter>();
         api.MapPost("/products/{product}/versions/{version}", UploadVersion)
+            .AddEndpointFilter<ApiKeyFilter>();
+        api.MapDelete("/products/{product}/versions/{version}", DeleteVersion)
             .AddEndpointFilter<ApiKeyFilter>();
 
         return app;
@@ -184,7 +201,7 @@ public static partial class ApiEndpoints
         switch (result.Status)
         {
             case UploadStatus.Success:
-                return Results.Created($"{httpContext.Request.PathBase}/api/products/{product}/versions/{version}", null);
+                return Results.Created($"{httpContext.Request.PathBase}/_api/products/{product}/versions/{version}", null);
 
             case UploadStatus.MissingIndexHtml:
                 LogUploadRejected(logger, product, version, "missing index.html");
@@ -201,6 +218,151 @@ public static partial class ApiEndpoints
             default:
                 LogUploadUnexpectedStatus(logger, product, version, result.Status);
                 return Results.Json(new { error = result.Error ?? "Internal error" }, statusCode: 500);
+        }
+    }
+
+    private static async Task<IResult> CreateProduct(
+        CreateProductRequest request,
+        IProductConfigService configService,
+        ILoggerFactory loggerFactory)
+    {
+        var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
+        try
+        {
+            if (string.IsNullOrWhiteSpace(request.Name))
+                return Results.Json(new { error = "Product name is required" }, statusCode: 400);
+
+            if (!ProductNameRegex.IsMatch(request.Name))
+                return Results.Json(new { error = "Product name must contain only lowercase letters, numbers, and hyphens" }, statusCode: 400);
+
+            if (ReservedNames.Contains(request.Name))
+                return Results.Json(new { error = $"'{request.Name}' is a reserved name" }, statusCode: 400);
+
+            if (configService.GetConfig(request.Name) != null)
+            {
+                LogProductAlreadyExists(logger, request.Name);
+                return Results.Json(new { error = $"Product '{request.Name}' already exists" }, statusCode: 409);
+            }
+
+            var config = new ProductConfig
+            {
+                Name = request.Name,
+                DisplayName = request.DisplayName,
+                Description = request.Description,
+                Source = request.Source ?? "upload"
+            };
+
+            await configService.CreateAsync(config);
+            LogProductCreated(logger, request.Name);
+            return Results.Created($"/_api/products/{request.Name}", config);
+        }
+        catch (Exception ex)
+        {
+            LogProductOperationFailed(logger, "create", request.Name, ex);
+            return Results.Json(new { error = $"Failed to create product: {ex.Message}" }, statusCode: 500);
+        }
+    }
+
+    private static async Task<IResult> UpdateProduct(
+        string product,
+        UpdateProductRequest request,
+        IProductConfigService configService,
+        ILoggerFactory loggerFactory)
+    {
+        var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
+        try
+        {
+            var existing = configService.GetConfig(product);
+            if (existing == null)
+            {
+                LogProductNotRegistered(logger, product);
+                return Results.Json(new { error = $"Product '{product}' is not registered" }, statusCode: 404);
+            }
+
+            var config = new ProductConfig
+            {
+                Name = product,
+                DisplayName = request.DisplayName ?? existing.DisplayName,
+                Description = request.Description ?? existing.Description,
+                Source = request.Source ?? existing.Source
+            };
+
+            await configService.UpdateAsync(config);
+            LogProductUpdated(logger, product);
+            return Results.Ok(config);
+        }
+        catch (Exception ex)
+        {
+            LogProductOperationFailed(logger, "update", product, ex);
+            return Results.Json(new { error = $"Failed to update product: {ex.Message}" }, statusCode: 500);
+        }
+    }
+
+    private static async Task<IResult> DeleteProduct(
+        string product,
+        IProductConfigService configService,
+        IUploadService uploadService,
+        ILoggerFactory loggerFactory,
+        bool deleteData = false)
+    {
+        var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
+        try
+        {
+            var existing = configService.GetConfig(product);
+            if (existing == null)
+            {
+                LogProductNotRegistered(logger, product);
+                return Results.Json(new { error = $"Product '{product}' is not registered" }, statusCode: 404);
+            }
+
+            await configService.DeleteAsync(product);
+            LogProductDeleted(logger, product, deleteData);
+
+            return Results.NoContent();
+        }
+        catch (Exception ex)
+        {
+            LogProductOperationFailed(logger, "delete", product, ex);
+            return Results.Json(new { error = $"Failed to delete product: {ex.Message}" }, statusCode: 500);
+        }
+    }
+
+    private static async Task<IResult> DeleteVersion(
+        string product,
+        string version,
+        IProductConfigService configService,
+        IUploadService uploadService,
+        ShelfOptions options,
+        ILoggerFactory loggerFactory,
+        CancellationToken ct)
+    {
+        var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
+        try
+        {
+            var config = configService.GetConfig(product);
+            if (config == null)
+            {
+                LogProductNotRegistered(logger, product);
+                return Results.Json(new { error = $"Product '{product}' is not registered" }, statusCode: 404);
+            }
+
+            if (!Regex.IsMatch(version, options.VersionPattern))
+            {
+                LogUploadInvalidVersion(logger, version, product, options.VersionPattern);
+                return Results.Json(new { error = $"Invalid version format: '{version}'" }, statusCode: 400);
+            }
+
+            var deleted = await uploadService.DeleteVersionAsync(product, version, ct);
+            if (!deleted)
+                return Results.Json(new { error = $"Version '{version}' not found for product '{product}'" }, statusCode: 404);
+
+            LogVersionDeleted(logger, product, version);
+            return Results.NoContent();
+        }
+        catch (Exception ex)
+        {
+            LogProductOperationFailed(logger, "delete version", $"{product}/{version}", ex);
+            return Results.Json(new { error = $"Failed to delete version: {ex.Message}" }, statusCode: 500);
         }
     }
 
@@ -245,4 +407,22 @@ public static partial class ApiEndpoints
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Upload failed with unexpected status {Status} for {Product}/{Version}")]
     private static partial void LogUploadUnexpectedStatus(ILogger logger, string product, string version, UploadStatus status);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Product already exists: {Product}")]
+    private static partial void LogProductAlreadyExists(ILogger logger, string product);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Product created: {Product}")]
+    private static partial void LogProductCreated(ILogger logger, string product);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Product updated: {Product}")]
+    private static partial void LogProductUpdated(ILogger logger, string product);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Product deleted: {Product} (deleteData={DeleteData})")]
+    private static partial void LogProductDeleted(ILogger logger, string product, bool deleteData);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Version deleted: {Product}/{Version}")]
+    private static partial void LogVersionDeleted(ILogger logger, string product, string version);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to {Operation} product {Product}")]
+    private static partial void LogProductOperationFailed(ILogger logger, string operation, string product, Exception ex);
 }

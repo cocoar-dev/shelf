@@ -104,8 +104,35 @@ public sealed partial class UploadService : IUploadService
         }
     }
 
+    public async Task<bool> DeleteVersionAsync(string product, string version, CancellationToken ct = default)
+    {
+        var key = $"{product}/{version}";
+        var semaphore = _locks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+
+        if (!await semaphore.WaitAsync(0, ct))
+            return false;
+
+        try
+        {
+            var versionDir = Path.Combine(_config.CurrentValue.DocsRoot, product, version);
+            if (!Directory.Exists(versionDir))
+                return false;
+
+            Directory.Delete(versionDir, recursive: true);
+            LogVersionDeleted(product, version);
+            return true;
+        }
+        finally
+        {
+            semaphore.Release();
+        }
+    }
+
     [LoggerMessage(Level = LogLevel.Information, Message = "Version deployed: {Product}/{Version}")]
     private partial void LogVersionDeployed(string product, string version);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Version deleted: {Product}/{Version}")]
+    private partial void LogVersionDeleted(string product, string version);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Upload failed for {Product}/{Version}")]
     private partial void LogUploadFailed(string product, string version, Exception ex);
