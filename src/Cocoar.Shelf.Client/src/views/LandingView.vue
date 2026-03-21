@@ -4,10 +4,10 @@
       <h1>Documentation</h1>
     </header>
 
-    <div class="landing-toolbar" v-if="previewCount > 0">
+    <div class="landing-toolbar" v-if="hasAnyPreviewContent">
       <label class="filter-toggle">
         <input type="checkbox" v-model="showPreview" />
-        <span>Show preview ({{ previewCount }})</span>
+        <span>Show preview</span>
       </label>
     </div>
 
@@ -78,9 +78,11 @@ const productsWithVersions = computed(() =>
   allProducts.value.filter(p => p.versions.length > 0)
 );
 
-const previewCount = computed(() =>
-  productsWithVersions.value.filter(p => isPreviewProduct(p)).length
-);
+const hasAnyPreviewContent = computed(() => {
+  return productsWithVersions.value.some(p =>
+    isPreviewProduct(p) || p.versions.some(v => isPreRelease(v))
+  );
+});
 
 const visibleProducts = computed(() => {
   if (showPreview.value) return productsWithVersions.value;

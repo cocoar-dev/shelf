@@ -12,7 +12,7 @@ public class ShelfOptions
 
     public string PathBase { get; set; } = "";
 
-    public string VersionPattern { get; set; } = @"^v?\d+(\.\d+(\.\d+(-[\w.]+)?)?)?$";
+    public string VersionPattern { get; set; } = @"^v?\d+(\.\d+(\.\d+(-[\w.-]+)?)?)?$";
 
     public string BasePlaceholder { get; set; } = "/__shelf__/";
 
