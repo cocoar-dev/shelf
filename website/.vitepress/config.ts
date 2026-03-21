@@ -45,6 +45,7 @@ export default defineConfig({
           items: [
             { text: 'Docker', link: '/guide/docker' },
             { text: 'Configuration', link: '/guide/configuration' },
+            { text: 'Authentication', link: '/guide/authentication' },
           ],
         },
         {
@@ -52,6 +53,7 @@ export default defineConfig({
           items: [
             { text: 'Product Registration', link: '/guide/product-registration' },
             { text: 'Upload API', link: '/guide/upload-api' },
+            { text: 'Admin UI', link: '/guide/admin-ui' },
           ],
         },
         {

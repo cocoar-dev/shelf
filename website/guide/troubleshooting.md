@@ -21,6 +21,12 @@ Verify which versions Shelf sees:
 docker exec shelf ls /data/docs/configuration/
 ```
 
+Or check via the API:
+
+```bash
+curl http://localhost/_api/products/configuration/versions
+```
+
 ## Page Loads But Navigation Is Broken
 
 This is most likely a **base path rewriting** issue. Shelf rewrites the VitePress base path in HTML, CSS, and JavaScript files. If the rewriting misses something, the page may render initially but client-side navigation (clicking sidebar links) fails.
@@ -49,6 +55,20 @@ This can happen if the CSS file's content type is not detected as `text/css`. Ch
 
 **Check path traversal protection.** Shelf blocks any resolved path that falls outside the docs root directory. If your symlinks or relative paths point outside the volume, they will be blocked.
 
+## Admin UI Not Loading
+
+**Check that an API key is configured.** The Admin UI requires `Shelf__ApiKey` to be set. Without it, authentication is disabled and protected endpoints return `503`.
+
+**Check the URL.** The Admin UI is served at `/admin/` (with trailing slash). If you have a `PathBase` configured, the URL is `{PathBase}/admin/`.
+
+**Check browser console.** Open DevTools and look for JavaScript errors or failed network requests to `/_api/` endpoints.
+
+**Cookie issues.** If login succeeds but you're immediately logged out, check that cookies are not being blocked. The Admin UI uses a `shelf.auth` cookie for session management.
+
+## API Returns 503
+
+This means no API key is configured. Set `Shelf__ApiKey` in your environment or `data/configuration.json`. All protected endpoints (product CRUD, upload, delete) require an API key to be configured.
+
 ## Overlapping Volume Mounts
 
 Docker supports mounting multiple volumes at nested paths. If you have both a general mount and a product-specific mount:
@@ -67,8 +87,8 @@ If a product's documentation is unexpectedly empty or outdated, check whether so
 
 Shelf caches two things in memory:
 
-1. **Version lists** per product — invalidated automatically via `FileSystemWatcher`
-2. **Detected base paths** per product/version — cached indefinitely
+1. **Version lists** per product -- invalidated automatically via `FileSystemWatcher`
+2. **Detected base paths** per product/version -- cached indefinitely
 
 If you suspect stale data after a problematic deployment, restarting the container clears all caches:
 

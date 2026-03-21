@@ -20,6 +20,8 @@ features:
     details: Deploy new versions without touching old ones. All versions stay accessible side-by-side.
   - title: Upload API
     details: Deploy docs from CI/CD pipelines via HTTP. Just zip your VitePress output and POST it.
+  - title: Admin UI
+    details: Manage products and versions from a built-in web interface. Create, edit, delete products and upload docs from the browser.
   - title: Built for VitePress
     details: Optimized for serving VitePress static output including LLM documentation files (llms.txt).
 ---
