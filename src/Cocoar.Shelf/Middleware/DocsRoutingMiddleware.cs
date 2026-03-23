@@ -12,7 +12,7 @@ public partial class DocsRoutingMiddleware
     private readonly BasePathDetector _basePathDetector;
     private readonly IReactiveConfig<ShelfOptions> _config;
     private readonly FileExtensionContentTypeProvider _contentTypeProvider = new();
-    private readonly Regex _versionRegex;
+    private (string Pattern, Regex Compiled) _versionRegexCache;
 
     public DocsRoutingMiddleware(
         RequestDelegate next,
@@ -24,7 +24,8 @@ public partial class DocsRoutingMiddleware
         _manifestService = manifestService;
         _basePathDetector = basePathDetector;
         _config = config;
-        _versionRegex = new Regex(_config.CurrentValue.VersionPattern, RegexOptions.Compiled);
+        var initialPattern = config.CurrentValue.VersionPattern;
+        _versionRegexCache = (initialPattern, new Regex(initialPattern, RegexOptions.Compiled));
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -60,15 +61,12 @@ public partial class DocsRoutingMiddleware
             return;
         }
 
-        // Mark this request as handled by docs routing (prevents SPA fallback)
-        context.Items["DocsRouted"] = true;
-
         var rest = segments.Length > 1 ? segments[1] : "";
         string resolvedPath;
         string version;
 
         var restSegments = rest.Split('/', 2);
-        if (restSegments[0].Length > 0 && _versionRegex.IsMatch(restSegments[0]))
+        if (restSegments[0].Length > 0 && GetVersionRegex().IsMatch(restSegments[0]))
         {
             version = restSegments[0];
             resolvedPath = Path.Combine(productDir, rest);
@@ -151,6 +149,15 @@ public partial class DocsRoutingMiddleware
         contentType.Contains("text/css") ||
         contentType.Contains("application/javascript") ||
         contentType.Contains("text/javascript");
+
+    private Regex GetVersionRegex()
+    {
+        var pattern = _config.CurrentValue.VersionPattern;
+        if (pattern == _versionRegexCache.Pattern) return _versionRegexCache.Compiled;
+        var compiled = new Regex(pattern, RegexOptions.Compiled);
+        _versionRegexCache = (pattern, compiled);
+        return compiled;
+    }
 
     [GeneratedRegex(@"\.[a-f0-9]{6,}\.(css|js)$")]
     private static partial Regex HashedAssetRegex();

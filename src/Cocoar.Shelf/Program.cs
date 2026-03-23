@@ -1,6 +1,7 @@
 using Cocoar.Configuration.AspNetCore;
 using Cocoar.Configuration.DI.Extensions;
 using Cocoar.Configuration.Providers;
+using Cocoar.Configuration.Reactive;
 using Cocoar.Shelf;
 using Cocoar.Shelf.Endpoints;
 using Cocoar.Shelf.Middleware;
@@ -69,6 +70,15 @@ var app = builder.Build();
 if (!string.IsNullOrEmpty(config.PathBase))
     app.UsePathBase(config.PathBase);
 
+app.Use(async (context, next) =>
+{
+    context.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    context.Response.Headers["X-Frame-Options"] = "SAMEORIGIN";
+    context.Response.Headers["Referrer-Policy"] = "strict-origin-when-cross-origin";
+    context.Response.Headers["X-XSS-Protection"] = "0";
+    await next();
+});
+
 app.UseSerilogRequestLogging();
 app.UseStaticFiles();
 app.UseAuthentication();
@@ -76,7 +86,23 @@ app.UseAuthorization();
 app.MapApiEndpoints();
 app.MapLlmsTxt();
 app.UseMiddleware<DocsRoutingMiddleware>();
-app.MapFallbackToFile("index.html");
+app.MapFallback(async (HttpContext ctx, IReactiveConfig<ShelfOptions> shelfConfig) =>
+{
+    var env = ctx.RequestServices.GetRequiredService<IWebHostEnvironment>();
+    var indexPath = Path.Combine(env.WebRootPath, "index.html");
+    if (!File.Exists(indexPath))
+    {
+        ctx.Response.StatusCode = 404;
+        return;
+    }
+    var html = await File.ReadAllTextAsync(indexPath);
+    var pathBase = shelfConfig.CurrentValue.PathBase.TrimEnd('/');
+    html = html.Replace(
+        "window.__SHELF_OPTIONS__ = {\"pathBase\":\"\"};",
+        $"window.__SHELF_OPTIONS__ = {{\"pathBase\":\"{pathBase}\"}};");
+    ctx.Response.ContentType = "text/html; charset=utf-8";
+    await ctx.Response.WriteAsync(html);
+});
 
 app.Run(config.AppUrl);
 

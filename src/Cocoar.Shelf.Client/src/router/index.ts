@@ -1,8 +1,10 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '@/stores/auth.store';
 
+const pathBase = (window.__SHELF_OPTIONS__?.pathBase ?? '').replace(/\/$/, '');
+
 export const router = createRouter({
-  history: createWebHistory('/'),
+  history: createWebHistory(pathBase + '/'),
   routes: [
     {
       path: '/',

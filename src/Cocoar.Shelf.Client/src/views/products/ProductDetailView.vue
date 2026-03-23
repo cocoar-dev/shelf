@@ -149,11 +149,7 @@ async function loadProduct() {
   isLoading.value = true;
   error.value = '';
   try {
-    const products = await shelfApi.getProducts();
-    product.value = products.find(p => p.name === name) ?? null;
-    if (!product.value) {
-      error.value = `Product '${name}' not found`;
-    }
+    product.value = await shelfApi.getProduct(name);
   } catch {
     error.value = 'Failed to load product';
   } finally {

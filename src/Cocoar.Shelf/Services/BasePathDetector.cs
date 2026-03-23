@@ -40,6 +40,13 @@ public sealed partial class BasePathDetector
     public void InvalidateCache(string versionDir) =>
         _cache.TryRemove(versionDir, out _);
 
+    public void InvalidateProductCache(string productDir)
+    {
+        foreach (var key in _cache.Keys)
+            if (key.StartsWith(productDir, StringComparison.OrdinalIgnoreCase))
+                _cache.TryRemove(key, out _);
+    }
+
     // Matches href="/some/base/assets/ and captures the base part
     [GeneratedRegex("""href="([^"]*?)assets/""")]
     private static partial Regex AssetHrefRegex();

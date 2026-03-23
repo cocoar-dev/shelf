@@ -14,7 +14,7 @@ public sealed class UploadServiceDeleteTests : IDisposable
         Directory.CreateDirectory(_docsRoot);
 
         var config = new TestReactiveConfig<ShelfOptions>(new ShelfOptions { DocsRoot = _docsRoot });
-        _sut = new UploadService(config, NullLogger<UploadService>.Instance);
+        _sut = new UploadService(config, NullLogger<UploadService>.Instance, new BasePathDetector());
     }
 
     [Fact]

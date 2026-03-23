@@ -8,12 +8,14 @@ public sealed partial class UploadService : IUploadService
 {
     private readonly IReactiveConfig<ShelfOptions> _config;
     private readonly ILogger<UploadService> _logger;
+    private readonly BasePathDetector _basePathDetector;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
-    public UploadService(IReactiveConfig<ShelfOptions> config, ILogger<UploadService> logger)
+    public UploadService(IReactiveConfig<ShelfOptions> config, ILogger<UploadService> logger, BasePathDetector basePathDetector)
     {
         _config = config;
         _logger = logger;
+        _basePathDetector = basePathDetector;
     }
 
     public async Task<UploadResult> UploadVersionAsync(string product, string version, Stream zipStream, CancellationToken ct = default)
@@ -83,6 +85,9 @@ public sealed partial class UploadService : IUploadService
 
             Directory.Move(tempDir, destVersionDir);
 
+            // Invalidate cached base path so a redeployed version picks up changes
+            _basePathDetector.InvalidateCache(destVersionDir);
+
             LogVersionDeployed(product, version);
             return new UploadResult(UploadStatus.Success);
         }
@@ -94,6 +99,8 @@ public sealed partial class UploadService : IUploadService
         finally
         {
             semaphore.Release();
+            if (semaphore.CurrentCount == 1)
+                _locks.TryRemove(new KeyValuePair<string, SemaphoreSlim>(key, semaphore));
 
             // Clean up temp dir if it still exists (failure path)
             if (Directory.Exists(tempDir))
@@ -118,6 +125,7 @@ public sealed partial class UploadService : IUploadService
             if (!Directory.Exists(versionDir))
                 return false;
 
+            _basePathDetector.InvalidateCache(versionDir);
             Directory.Delete(versionDir, recursive: true);
             LogVersionDeleted(product, version);
             return true;
@@ -125,7 +133,21 @@ public sealed partial class UploadService : IUploadService
         finally
         {
             semaphore.Release();
+            if (semaphore.CurrentCount == 1)
+                _locks.TryRemove(new KeyValuePair<string, SemaphoreSlim>(key, semaphore));
         }
+    }
+
+    public Task<bool> DeleteProductDataAsync(string product, CancellationToken ct = default)
+    {
+        var productDir = Path.Combine(_config.CurrentValue.DocsRoot, product);
+        if (!Directory.Exists(productDir))
+            return Task.FromResult(false);
+
+        _basePathDetector.InvalidateProductCache(productDir);
+        Directory.Delete(productDir, recursive: true);
+        LogProductDataDeleted(product);
+        return Task.FromResult(true);
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Version deployed: {Product}/{Version}")]
@@ -133,6 +155,9 @@ public sealed partial class UploadService : IUploadService
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Version deleted: {Product}/{Version}")]
     private partial void LogVersionDeleted(string product, string version);
+
+    [LoggerMessage(Level = LogLevel.Information, Message = "Product data deleted: {Product}")]
+    private partial void LogProductDataDeleted(string product);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Upload failed for {Product}/{Version}")]
     private partial void LogUploadFailed(string product, string version, Exception ex);

@@ -23,3 +23,7 @@ declare module '@cocoar/vue-ui' {
 }
 
 declare module '@cocoar/vue-ui/styles' {}
+
+declare interface Window {
+  __SHELF_OPTIONS__: { pathBase: string };
+}

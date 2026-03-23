@@ -106,17 +106,12 @@ onMounted(async () => {
 
   isLoading.value = true;
   try {
-    const products = await shelfApi.getProducts();
-    const product = products.find(p => p.name === name.value);
-    if (product) {
-      form.value.name = product.name;
-      form.value.displayName = product.displayName ?? '';
-      form.value.description = product.description ?? '';
-      form.value.source = product.source;
-      form.value.visibility = product.visibility;
-    } else {
-      error.value = `Product '${name.value}' not found`;
-    }
+    const product = await shelfApi.getProduct(name.value!);
+    form.value.name = product.name;
+    form.value.displayName = product.displayName ?? '';
+    form.value.description = product.description ?? '';
+    form.value.source = product.source;
+    form.value.visibility = product.visibility;
   } catch {
     error.value = 'Failed to load product';
   } finally {

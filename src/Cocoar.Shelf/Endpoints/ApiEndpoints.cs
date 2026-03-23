@@ -19,7 +19,9 @@ public static partial class ApiEndpoints
 
         // Public read endpoints
         api.MapGet("/products", GetProducts);
+        api.MapGet("/products/{product}", GetProduct);
         api.MapGet("/products/{product}/versions", GetVersions);
+        api.MapGet("/shelf-config", GetShelfConfig);
 
         // Protected write endpoints (cookie or Bearer API key)
         api.MapPost("/products", CreateProduct)
@@ -99,6 +101,44 @@ public static partial class ApiEndpoints
             return Results.Json(new { error = $"Failed to get versions for product '{product}'" }, statusCode: 500);
         }
     }
+
+    private static IResult GetProduct(
+        string product,
+        IProductConfigService configService,
+        IManifestService manifestService,
+        ILoggerFactory loggerFactory)
+    {
+        var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
+        try
+        {
+            var config = configService.GetConfig(product);
+            if (config == null)
+            {
+                LogProductNotRegistered(logger, product);
+                return Results.Json(new { error = $"Product '{product}' is not registered" }, statusCode: 404);
+            }
+
+            var manifest = manifestService.GetManifest(product);
+            return Results.Ok(new
+            {
+                config.Name,
+                config.DisplayName,
+                config.Description,
+                config.Source,
+                config.Visibility,
+                Latest = manifest?.Latest,
+                Versions = manifest?.Versions ?? (IReadOnlyList<string>)[]
+            });
+        }
+        catch (Exception ex)
+        {
+            LogGetProductFailed(logger, product, ex);
+            return Results.Json(new { error = $"Failed to get product '{product}'" }, statusCode: 500);
+        }
+    }
+
+    private static IResult GetShelfConfig(ShelfOptions options) =>
+        Results.Ok(new { pathBase = options.PathBase });
 
     private static async Task<IResult> UploadVersion(
         string product,
@@ -307,6 +347,7 @@ public static partial class ApiEndpoints
         IProductConfigService configService,
         IUploadService uploadService,
         ILoggerFactory loggerFactory,
+        CancellationToken ct,
         bool deleteData = false)
     {
         var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
@@ -320,6 +361,10 @@ public static partial class ApiEndpoints
             }
 
             await configService.DeleteAsync(product);
+
+            if (deleteData)
+                await uploadService.DeleteProductDataAsync(product, ct);
+
             LogProductDeleted(logger, product, deleteData);
 
             return Results.NoContent();
@@ -378,6 +423,9 @@ public static partial class ApiEndpoints
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to get versions for product {Product}")]
     private static partial void LogGetVersionsFailed(ILogger logger, string product, Exception ex);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "Failed to get product {Product}")]
+    private static partial void LogGetProductFailed(ILogger logger, string product, Exception ex);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Upload bad request for {Product}/{Version}")]
     private static partial void LogUploadBadRequest(ILogger logger, string product, string version, Exception ex);
