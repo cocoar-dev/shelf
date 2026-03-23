@@ -2,7 +2,7 @@ using Cocoar.Shelf.Endpoints;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
+using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Cocoar.Shelf.Tests;
 
@@ -55,7 +55,7 @@ public sealed class ApiKeyFilterTests
     private static async Task<object?> InvokeFilter(string apiKey, string? authHeader)
     {
         var services = new ServiceCollection();
-        services.Configure<ShelfOptions>(o => o.ApiKey = apiKey);
+        services.AddScoped(_ => new ShelfOptions { ApiKey = apiKey });
 
         var httpContext = new DefaultHttpContext
         {
@@ -66,7 +66,7 @@ public sealed class ApiKeyFilterTests
             httpContext.Request.Headers.Authorization = authHeader;
 
         var context = new DefaultEndpointFilterInvocationContext(httpContext);
-        var filter = new ApiKeyFilter();
+        var filter = new ApiKeyFilter(NullLogger<ApiKeyFilter>.Instance);
 
         return await filter.InvokeAsync(context, _ => ValueTask.FromResult<object?>("passed"));
     }

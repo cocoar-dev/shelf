@@ -1,6 +1,5 @@
 using Cocoar.Shelf.Services;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace Cocoar.Shelf.Tests;
 
@@ -14,8 +13,8 @@ public sealed class ManifestServiceTests : IDisposable
         _tempDir = Path.Combine(Path.GetTempPath(), $"shelf-tests-{Guid.NewGuid():N}");
         Directory.CreateDirectory(_tempDir);
 
-        var options = Options.Create(new ShelfOptions { DocsRoot = _tempDir });
-        _sut = new ManifestService(options, NullLogger<ManifestService>.Instance);
+        var config = new TestReactiveConfig<ShelfOptions>(new ShelfOptions { DocsRoot = _tempDir });
+        _sut = new ManifestService(config, NullLogger<ManifestService>.Instance);
     }
 
     [Fact]
@@ -180,8 +179,8 @@ public sealed class ManifestServiceTests : IDisposable
     [Fact]
     public void GetProducts_ReturnsEmpty_WhenNoProducts()
     {
-        var options = Options.Create(new ShelfOptions { DocsRoot = Path.Combine(_tempDir, "nonexistent") });
-        using var sut = new ManifestService(options, NullLogger<ManifestService>.Instance);
+        var config = new TestReactiveConfig<ShelfOptions>(new ShelfOptions { DocsRoot = Path.Combine(_tempDir, "nonexistent") });
+        using var sut = new ManifestService(config, NullLogger<ManifestService>.Instance);
 
         var products = sut.GetProducts();
 

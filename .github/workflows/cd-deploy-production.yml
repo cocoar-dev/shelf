@@ -29,8 +29,8 @@ jobs:
             exit 1
           fi
 
-          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error ::Invalid release version format. Expected X.Y.Z (e.g., 1.2.3), got: $VERSION"
+          if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.+)?$ ]]; then
+            echo "::error ::Invalid release version format. Expected X.Y.Z or X.Y.Z-label (e.g., 1.2.3, 1.2.3-beta.1), got: $VERSION"
             exit 1
           fi
 
@@ -68,6 +68,15 @@ jobs:
             --username windischb \
             --password ${{ secrets.PERSONAL_PACKAGES_TOKEN }} \
             --store-password-in-clear-text
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Build Admin UI
+        working-directory: ./src/Cocoar.Shelf.Client
+        run: npm ci && npm run build
 
       - name: Restore dependencies
         run: dotnet restore Cocoar.Shelf.slnx
@@ -196,9 +205,15 @@ jobs:
         env:
           VERSION: ${{ needs.validate-version.outputs.version }}
         run: |
-          MAJOR=$(echo "$VERSION" | cut -d. -f1)
-          MINOR=$(echo "$VERSION" | cut -d. -f2)
-          echo "value=v${MAJOR}.${MINOR}" >> $GITHUB_OUTPUT
+          if [[ "$VERSION" == *-* ]]; then
+            # Pre-release: use full version (e.g. v6.0.0-beta.1)
+            echo "value=v${VERSION}" >> $GITHUB_OUTPUT
+          else
+            # Stable: use major.minor (e.g. v5.2)
+            MAJOR=$(echo "$VERSION" | cut -d. -f1)
+            MINOR=$(echo "$VERSION" | cut -d. -f2)
+            echo "value=v${MAJOR}.${MINOR}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Upload to Shelf
         env:
@@ -211,7 +226,7 @@ jobs:
             -H "Authorization: Bearer $KEY" \
             -H "Content-Type: application/zip" \
             --data-binary @$GITHUB_WORKSPACE/docs.zip \
-            "${URL}/api/products/shelf/versions/${VER}"
+            "${URL}/_api/products/shelf/versions/${VER}"
 
       - name: Docs deployment summary
         run: |

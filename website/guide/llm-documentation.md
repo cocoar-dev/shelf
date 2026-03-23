@@ -10,7 +10,7 @@ The emerging standard (see [llmstxt.org](https://llmstxt.org/)) is to serve two 
 
 | File | Purpose |
 |------|---------|
-| `llms.txt` | Short summary — product description, links, and table of contents |
+| `llms.txt` | Short summary -- product description, links, and table of contents |
 | `llms-full.txt` | Complete documentation as plain Markdown |
 
 These files should be served at the root of your documentation:
@@ -20,7 +20,19 @@ https://docs.example.com/myproduct/v5/llms.txt
 https://docs.example.com/myproduct/v5/llms-full.txt
 ```
 
-Shelf serves these files like any other static file — just include them in your deployment archive.
+Shelf serves these files like any other static file -- just include them in your deployment archive.
+
+## Shelf's Product Index
+
+Shelf auto-generates a `/llms.txt` at the root URL that serves as a product index for LLMs. This file lists all public products that have at least one stable version, with links to each product's own `llms-full.txt`.
+
+```
+GET /llms.txt
+```
+
+The generated file only includes products where `visibility` is `"public"`. Preview products and products with only pre-release versions are excluded.
+
+This allows an AI assistant to discover all available documentation by fetching a single URL. The landing page also includes `<link rel="alternate">` and a hidden element pointing to `/llms.txt` for programmatic discovery.
 
 ## Making the Files Discoverable
 

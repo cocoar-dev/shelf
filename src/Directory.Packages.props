@@ -6,11 +6,14 @@
 
   <ItemGroup>
     <!-- Runtime -->
+    <PackageVersion Include="Cocoar.Configuration.AspNetCore" Version="5.0.0-beta.2" />
     <PackageVersion Include="Cocoar.FileSystem" Version="2.2.0" />
+    <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Testing -->
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.5" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
     <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />

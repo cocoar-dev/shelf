@@ -1,7 +1,6 @@
 using System.Text.Json;
 using Cocoar.Shelf.Services;
 using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.Extensions.Options;
 
 namespace Cocoar.Shelf.Tests;
 
@@ -19,8 +18,8 @@ public sealed class ProductConfigServiceTests : IDisposable
 
     private ProductConfigService CreateService(string? configRoot = null)
     {
-        var options = Options.Create(new ShelfOptions { ConfigRoot = configRoot ?? _tempDir });
-        return new ProductConfigService(options, NullLogger<ProductConfigService>.Instance);
+        var config = new TestReactiveConfig<ShelfOptions>(new ShelfOptions { ConfigRoot = configRoot ?? _tempDir });
+        return new ProductConfigService(config, NullLogger<ProductConfigService>.Instance);
     }
 
     [Fact]

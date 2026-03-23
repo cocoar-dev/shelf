@@ -1,8 +1,8 @@
 using System.Collections.Concurrent;
 using System.Text.Json;
+using Cocoar.Configuration.Reactive;
 using Cocoar.FileSystem;
 using Cocoar.Shelf.Models;
-using Microsoft.Extensions.Options;
 
 namespace Cocoar.Shelf.Services;
 
@@ -20,10 +20,10 @@ public sealed partial class ProductConfigService : IProductConfigService, IDispo
         AllowTrailingCommas = true
     };
 
-    public ProductConfigService(IOptions<ShelfOptions> options, ILogger<ProductConfigService> logger)
+    public ProductConfigService(IReactiveConfig<ShelfOptions> config, ILogger<ProductConfigService> logger)
     {
         _logger = logger;
-        _productsDir = Path.Combine(options.Value.ConfigRoot, "products");
+        _productsDir = Path.Combine(config.CurrentValue.ConfigRoot, "products");
 
         if (!Directory.Exists(_productsDir))
         {
@@ -120,6 +120,56 @@ public sealed partial class ProductConfigService : IProductConfigService, IDispo
         {
             LogConfigInvalid(fullPath, ex.Message);
         }
+    }
+
+    private static readonly JsonSerializerOptions WriteJsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true
+    };
+
+    public async Task CreateAsync(ProductConfig config)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(config.Name);
+
+        Directory.CreateDirectory(_productsDir);
+
+        var filePath = Path.Combine(_productsDir, $"{config.Name}.json");
+        if (File.Exists(filePath))
+            throw new InvalidOperationException($"Product '{config.Name}' already exists");
+
+        var json = JsonSerializer.Serialize(config, WriteJsonOptions);
+        await File.WriteAllTextAsync(filePath, json);
+        _cache[config.Name] = config;
+        LogConfigLoaded(config.Name);
+    }
+
+    public async Task UpdateAsync(ProductConfig config)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(config.Name);
+
+        var filePath = Path.Combine(_productsDir, $"{config.Name}.json");
+        if (!File.Exists(filePath))
+            throw new KeyNotFoundException($"Product '{config.Name}' not found");
+
+        var json = JsonSerializer.Serialize(config, WriteJsonOptions);
+        await File.WriteAllTextAsync(filePath, json);
+        _cache[config.Name] = config;
+        LogConfigLoaded(config.Name);
+    }
+
+    public Task<bool> DeleteAsync(string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        var filePath = Path.Combine(_productsDir, $"{name}.json");
+        if (!File.Exists(filePath))
+            return Task.FromResult(false);
+
+        File.Delete(filePath);
+        _cache.TryRemove(name, out _);
+        LogConfigRemoved(name);
+        return Task.FromResult(true);
     }
 
     public void Dispose()

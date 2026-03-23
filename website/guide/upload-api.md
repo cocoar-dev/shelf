@@ -1,13 +1,13 @@
 # Upload API
 
-Shelf provides an HTTP API for deploying documentation versions. This is designed for CI/CD pipelines — analogous to `nuget push` or `docker push`.
+Shelf provides an HTTP API for deploying documentation versions. This is designed for CI/CD pipelines -- analogous to `nuget push` or `docker push`.
 
 ## Prerequisites
 
-1. The product must be [registered](./product-registration.md) via a config file
+1. The product must be [registered](./product-registration.md) (via Admin UI, API, or config file)
 2. An API key must be [configured](./configuration.md) (`Shelf__ApiKey`)
 
-If no API key is configured, the upload endpoint returns `503 Service Unavailable`.
+If no API key is configured, protected endpoints return `503 Service Unavailable`.
 
 ## Uploading a Version
 
@@ -16,7 +16,7 @@ curl -X POST \
   -H "Authorization: Bearer $SHELF_API_KEY" \
   -H "Content-Type: application/zip" \
   --data-binary @docs.zip \
-  https://docs.cocoar.dev/api/products/configuration/versions/v6
+  https://docs.cocoar.dev/_api/products/configuration/versions/v6
 ```
 
 The ZIP file should contain the VitePress build output with `index.html` at the root:
@@ -35,9 +35,9 @@ docs.zip
 
 ### What Happens
 
-1. API key is validated
-2. Product registration is checked (must exist in config)
-3. Version format is validated against the [version pattern](./configuration.md#version-pattern) (supports SemVer: `v5`, `v5.2`, `v5.2.0`, `v5.2.0-beta.1`)
+1. API key is validated (Bearer token or cookie session)
+2. Product registration is checked (must exist)
+3. Version format is validated against the [version pattern](./configuration.md#version-pattern) (supports SemVer: `v5`, `v5.2`, `v5.2.0`, `v5.2.0-beta.1`, `v1.0.0-vue-ui.10`)
 4. ZIP is extracted to a temporary directory
 5. Validation: `index.html` must exist at the root
 6. Atomic move to `/data/docs/{product}/{version}/`
@@ -45,6 +45,16 @@ docs.zip
 8. Response: `201 Created`
 
 Re-uploading an existing version replaces it atomically.
+
+## Deleting a Version
+
+```bash
+curl -X DELETE \
+  -H "Authorization: Bearer $SHELF_API_KEY" \
+  https://docs.cocoar.dev/_api/products/configuration/versions/v6
+```
+
+The version directory is removed from disk. ManifestService detects the change automatically.
 
 ## CI/CD Integration
 
@@ -95,14 +105,15 @@ jobs:
             -H "Authorization: Bearer $KEY" \
             -H "Content-Type: application/zip" \
             --data-binary @$GITHUB_WORKSPACE/docs.zip \
-            https://docs.cocoar.dev/api/products/configuration/versions/v$VER
+            https://docs.cocoar.dev/_api/products/configuration/versions/v$VER
 ```
 
 ::: tip Version Format
 Choose what makes sense for your docs. Use the GitVersion output variables in the upload URL:
-- **Major only** → `v5` (use `outputs.major`)
-- **Major.Minor** → `v5.2` (recommended, use `outputs.major` + `outputs.minor`)
-- **Full SemVer** → `v5.2.0` (use `outputs.majorMinorPatch`)
+- **Major only** -- `v5` (use `outputs.major`)
+- **Major.Minor** -- `v5.2` (recommended, use `outputs.major` + `outputs.minor`)
+- **Full SemVer** -- `v5.2.0` (use `outputs.majorMinorPatch`)
+- **Pre-release** -- `v5.2.0-beta.1` (use full version for pre-release builds)
 :::
 
 ### Manual Trigger Variant
@@ -122,17 +133,46 @@ Then use the `inputs.version` variable instead of the GitVersion output in the `
 
 ### Key Points
 
-- **ZIP from inside the dist directory** — `cd .vitepress/dist && zip -r ... .` so `index.html` is at the root
-- **Use `curl -f`** — fails the step on HTTP errors (4xx/5xx)
-- **Re-upload replaces atomically** — safe to re-run the pipeline
-- **Pre-release versions are never "latest"** — visitors are redirected to the highest stable version
+- **ZIP from inside the dist directory** -- `cd .vitepress/dist && zip -r ... .` so `index.html` is at the root
+- **Use `curl -f`** -- fails the step on HTTP errors (4xx/5xx)
+- **Re-upload replaces atomically** -- safe to re-run the pipeline
+- **Pre-release versions are never "latest"** -- visitors are redirected to the highest stable version
+- **Node.js required** -- CI workflows need a Node.js setup step before building (for the Vue client)
 
-## API Endpoints
+## API Reference
+
+All API routes use the `/_api/` prefix. See [Authentication](./authentication.md) for details on auth methods.
+
+### Products
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/_api/products` | No | List all registered products with version info |
+| `GET` | `/_api/products/{product}` | No | Get a single product with version info |
+| `POST` | `/_api/products` | Yes | Create a new product |
+| `PUT` | `/_api/products/{product}` | Yes | Update a product |
+| `DELETE` | `/_api/products/{product}` | Yes | Delete product config. Pass `?deleteData=true` to also delete docs from disk |
+
+### Versions
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/_api/products/{product}/versions` | No | List versions of a product |
+| `POST` | `/_api/products/{product}/versions/{version}` | Yes | Upload a ZIP as a new version |
+| `DELETE` | `/_api/products/{product}/versions/{version}` | Yes | Delete a version |
+
+### Authentication
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `POST` | `/_api/auth/login` | No | Cookie login with API key |
+| `POST` | `/_api/auth/logout` | No | Clear session cookie |
+| `GET` | `/_api/auth/me` | No | Get current auth status |
 
 ### List Products
 
 ```
-GET /api/products
+GET /_api/products
 ```
 
 Returns all registered products with their version information. No authentication required.
@@ -144,6 +184,9 @@ Returns all registered products with their version information. No authenticatio
     "displayName": "Cocoar.Configuration",
     "description": "Reactive configuration for .NET",
     "source": "upload",
+    "visibility": "public",
+    "tags": ["C#", ".NET"],
+    "showWhenEmpty": false,
     "latest": "v5.2.0",
     "versions": ["v5.2.0", "v5.1.0", "v5.0.0"]
   }
@@ -153,7 +196,7 @@ Returns all registered products with their version information. No authenticatio
 ### List Versions
 
 ```
-GET /api/products/{product}/versions
+GET /_api/products/{product}/versions
 ```
 
 Returns version information for a specific product. No authentication required.
@@ -169,10 +212,18 @@ Returns version information for a specific product. No authentication required.
 ### Upload Version
 
 ```
-POST /api/products/{product}/versions/{version}
+POST /_api/products/{product}/versions/{version}
 ```
 
-Uploads a ZIP file as a new documentation version. Requires `Authorization: Bearer {key}` header.
+Uploads a ZIP file as a new documentation version. Requires [authentication](./authentication.md).
+
+### Delete Version
+
+```
+DELETE /_api/products/{product}/versions/{version}
+```
+
+Deletes a documentation version. Requires [authentication](./authentication.md).
 
 ## Error Responses
 
@@ -180,7 +231,7 @@ Uploads a ZIP file as a new documentation version. Requires `Authorization: Bear
 |--------|------|
 | `201` | Successfully deployed |
 | `400` | Invalid version format, corrupt ZIP, or missing `index.html` |
-| `401` | Missing or invalid API key |
+| `401` | Missing or invalid authentication |
 | `404` | Product not registered |
 | `409` | Concurrent upload for the same product/version |
 | `413` | ZIP exceeds maximum upload size |
@@ -188,8 +239,8 @@ Uploads a ZIP file as a new documentation version. Requires `Authorization: Bear
 
 ## Security
 
-- **Authentication**: Bearer token checked against the configured API key
+- **Authentication**: Bearer token or cookie session checked against the configured API key. See [Authentication](./authentication.md)
 - **ZIP-Slip protection**: All extracted paths are validated to stay within the target directory
-- **Atomic deployment**: Files are extracted to a temp directory, validated, then moved — Shelf never serves a half-extracted state
+- **Atomic deployment**: Files are extracted to a temp directory, validated, then moved -- Shelf never serves a half-extracted state
 - **Concurrent upload protection**: Simultaneous uploads for the same product/version return `409 Conflict`
 - **Size limit**: Configurable via `MaxUploadSizeBytes` (default: 100 MB)

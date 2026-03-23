@@ -1,33 +1,33 @@
 using System.Collections.Concurrent;
 using System.Text.RegularExpressions;
+using Cocoar.Configuration.Reactive;
 using Cocoar.FileSystem;
 using Cocoar.Shelf.Models;
-using Microsoft.Extensions.Options;
 
 namespace Cocoar.Shelf.Services;
 
 public sealed partial class ManifestService : IManifestService, IDisposable
 {
-    private readonly ShelfOptions _options;
+    private readonly IReactiveConfig<ShelfOptions> _config;
     private readonly ILogger<ManifestService> _logger;
     private readonly ConcurrentDictionary<string, ProductManifest> _cache = new();
     private readonly ResilientFileSystemMonitor? _monitor;
     private readonly Regex _versionRegex;
 
-    public ManifestService(IOptions<ShelfOptions> options, ILogger<ManifestService> logger)
+    public ManifestService(IReactiveConfig<ShelfOptions> config, ILogger<ManifestService> logger)
     {
-        _options = options.Value;
+        _config = config;
         _logger = logger;
-        _versionRegex = new Regex(_options.VersionPattern, RegexOptions.Compiled);
+        _versionRegex = new Regex(_config.CurrentValue.VersionPattern, RegexOptions.Compiled);
 
-        if (!Directory.Exists(_options.DocsRoot))
+        if (!Directory.Exists(_config.CurrentValue.DocsRoot))
         {
-            LogDocsRootMissing(_options.DocsRoot);
+            LogDocsRootMissing(_config.CurrentValue.DocsRoot);
             return;
         }
 
         _monitor = ResilientFileSystemMonitor
-            .Watch(_options.DocsRoot)
+            .Watch(_config.CurrentValue.DocsRoot)
             .IncludeSubdirectories(2)
             .WithDebounce(500)
             .OnCreated((_, e) => InvalidateCache(e.FullPath))
@@ -51,7 +51,7 @@ public sealed partial class ManifestService : IManifestService, IDisposable
         if (_cache.TryGetValue(product, out var cached))
             return cached;
 
-        var productDir = Path.Combine(_options.DocsRoot, product);
+        var productDir = Path.Combine(_config.CurrentValue.DocsRoot, product);
 
         if (!Directory.Exists(productDir))
             return null;
@@ -67,10 +67,10 @@ public sealed partial class ManifestService : IManifestService, IDisposable
 
     public IReadOnlyList<string> GetProducts()
     {
-        if (!Directory.Exists(_options.DocsRoot))
+        if (!Directory.Exists(_config.CurrentValue.DocsRoot))
             return [];
 
-        return Directory.GetDirectories(_options.DocsRoot)
+        return Directory.GetDirectories(_config.CurrentValue.DocsRoot)
             .Select(Path.GetFileName)
             .Where(name => name != null)
             .Cast<string>()
@@ -124,7 +124,7 @@ public sealed partial class ManifestService : IManifestService, IDisposable
 
     private void InvalidateCache(string fullPath)
     {
-        var docsRootFull = Path.GetFullPath(_options.DocsRoot);
+        var docsRootFull = Path.GetFullPath(_config.CurrentValue.DocsRoot);
         var changedFull = Path.GetFullPath(fullPath);
 
         if (!changedFull.StartsWith(docsRootFull, StringComparison.OrdinalIgnoreCase))

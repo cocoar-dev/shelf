@@ -1,7 +1,7 @@
 using System.Text.RegularExpressions;
+using Cocoar.Configuration.Reactive;
 using Cocoar.Shelf.Services;
 using Microsoft.AspNetCore.StaticFiles;
-using Microsoft.Extensions.Options;
 
 namespace Cocoar.Shelf.Middleware;
 
@@ -10,21 +10,22 @@ public partial class DocsRoutingMiddleware
     private readonly RequestDelegate _next;
     private readonly IManifestService _manifestService;
     private readonly BasePathDetector _basePathDetector;
-    private readonly ShelfOptions _options;
+    private readonly IReactiveConfig<ShelfOptions> _config;
     private readonly FileExtensionContentTypeProvider _contentTypeProvider = new();
-    private readonly Regex _versionRegex;
+    private (string Pattern, Regex Compiled) _versionRegexCache;
 
     public DocsRoutingMiddleware(
         RequestDelegate next,
         IManifestService manifestService,
         BasePathDetector basePathDetector,
-        IOptions<ShelfOptions> options)
+        IReactiveConfig<ShelfOptions> config)
     {
         _next = next;
         _manifestService = manifestService;
         _basePathDetector = basePathDetector;
-        _options = options.Value;
-        _versionRegex = new Regex(_options.VersionPattern, RegexOptions.Compiled);
+        _config = config;
+        var initialPattern = config.CurrentValue.VersionPattern;
+        _versionRegexCache = (initialPattern, new Regex(initialPattern, RegexOptions.Compiled));
     }
 
     public async Task InvokeAsync(HttpContext context)
@@ -43,9 +44,16 @@ public partial class DocsRoutingMiddleware
             return;
         }
 
+        // Reserved prefixes — never interpret as product names
+        if (path.StartsWith('_'))
+        {
+            await _next(context);
+            return;
+        }
+
         var segments = path.Split('/', 2);
         var product = segments[0];
-        var productDir = Path.Combine(_options.DocsRoot, product);
+        var productDir = Path.Combine(_config.CurrentValue.DocsRoot, product);
 
         if (!Directory.Exists(productDir))
         {
@@ -58,7 +66,7 @@ public partial class DocsRoutingMiddleware
         string version;
 
         var restSegments = rest.Split('/', 2);
-        if (restSegments[0].Length > 0 && _versionRegex.IsMatch(restSegments[0]))
+        if (restSegments[0].Length > 0 && GetVersionRegex().IsMatch(restSegments[0]))
         {
             version = restSegments[0];
             resolvedPath = Path.Combine(productDir, rest);
@@ -91,7 +99,7 @@ public partial class DocsRoutingMiddleware
         resolvedPath = Path.GetFullPath(resolvedPath);
 
         // Security: prevent path traversal outside docs root
-        var docsRootFull = Path.GetFullPath(_options.DocsRoot);
+        var docsRootFull = Path.GetFullPath(_config.CurrentValue.DocsRoot);
         if (!resolvedPath.StartsWith(docsRootFull, StringComparison.OrdinalIgnoreCase))
         {
             context.Response.StatusCode = 400;
@@ -141,6 +149,15 @@ public partial class DocsRoutingMiddleware
         contentType.Contains("text/css") ||
         contentType.Contains("application/javascript") ||
         contentType.Contains("text/javascript");
+
+    private Regex GetVersionRegex()
+    {
+        var pattern = _config.CurrentValue.VersionPattern;
+        if (pattern == _versionRegexCache.Pattern) return _versionRegexCache.Compiled;
+        var compiled = new Regex(pattern, RegexOptions.Compiled);
+        _versionRegexCache = (pattern, compiled);
+        return compiled;
+    }
 
     [GeneratedRegex(@"\.[a-f0-9]{6,}\.(css|js)$")]
     private static partial Regex HashedAssetRegex();
