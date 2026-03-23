@@ -4,6 +4,8 @@ export interface Product {
   description: string | null;
   source: string;
   visibility: string;
+  tags: string[];
+  showWhenEmpty: boolean;
   latest: string | null;
   versions: string[];
 }
@@ -20,6 +22,8 @@ export interface CreateProductRequest {
   description?: string;
   source?: string;
   visibility?: string;
+  tags?: string[];
+  showWhenEmpty?: boolean;
 }
 
 export interface UpdateProductRequest {
@@ -27,4 +31,6 @@ export interface UpdateProductRequest {
   description?: string;
   source?: string;
   visibility?: string;
+  tags?: string[];
+  showWhenEmpty?: boolean;
 }

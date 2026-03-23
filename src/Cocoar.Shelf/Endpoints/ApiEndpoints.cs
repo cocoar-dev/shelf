@@ -56,6 +56,8 @@ public static partial class ApiEndpoints
                     config.Description,
                     config.Source,
                     config.Visibility,
+                    config.Tags,
+                    config.ShowWhenEmpty,
                     Latest = manifest?.Latest,
                     Versions = manifest?.Versions ?? (IReadOnlyList<string>)[]
                 };
@@ -126,6 +128,8 @@ public static partial class ApiEndpoints
                 config.Description,
                 config.Source,
                 config.Visibility,
+                config.Tags,
+                config.ShowWhenEmpty,
                 Latest = manifest?.Latest,
                 Versions = manifest?.Versions ?? (IReadOnlyList<string>)[]
             });
@@ -292,7 +296,9 @@ public static partial class ApiEndpoints
                 DisplayName = request.DisplayName,
                 Description = request.Description,
                 Source = request.Source ?? "upload",
-                Visibility = request.Visibility ?? "public"
+                Visibility = request.Visibility ?? "public",
+                Tags = NormalizeTags(request.Tags),
+                ShowWhenEmpty = request.ShowWhenEmpty ?? false
             };
 
             await configService.CreateAsync(config);
@@ -328,7 +334,9 @@ public static partial class ApiEndpoints
                 DisplayName = request.DisplayName ?? existing.DisplayName,
                 Description = request.Description ?? existing.Description,
                 Source = request.Source ?? existing.Source,
-                Visibility = request.Visibility ?? existing.Visibility
+                Visibility = request.Visibility ?? existing.Visibility,
+                Tags = request.Tags != null ? NormalizeTags(request.Tags) : existing.Tags,
+                ShowWhenEmpty = request.ShowWhenEmpty ?? existing.ShowWhenEmpty
             };
 
             await configService.UpdateAsync(config);
@@ -477,4 +485,7 @@ public static partial class ApiEndpoints
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to {Operation} product {Product}")]
     private static partial void LogProductOperationFailed(ILogger logger, string operation, string product, Exception ex);
+
+    private static IReadOnlyList<string> NormalizeTags(IReadOnlyList<string>? tags) =>
+        tags == null ? [] : tags.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Order().ToList();
 }

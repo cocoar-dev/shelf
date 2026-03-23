@@ -46,6 +46,33 @@
               placeholder="upload"
               hint="Deployment source type (e.g., &quot;upload&quot;)"
             />
+            <label class="checkbox-field">
+              <input type="checkbox" v-model="form.showWhenEmpty" />
+              <span>
+                <strong>Show when empty</strong>
+                <small>Display on landing page even without any published versions</small>
+              </span>
+            </label>
+          </div>
+        </CoarCard>
+
+        <CoarCard title="Tags" class="mt-4">
+          <div class="form-fields">
+            <div class="tag-input-row">
+              <CoarTextInput
+                v-model="tagInput"
+                placeholder="Add tag…"
+                @keydown.enter.prevent="addTag"
+              />
+              <CoarButton variant="secondary" size="s" @click="addTag">Add</CoarButton>
+            </div>
+            <div v-if="form.tags.length > 0" class="tag-chips">
+              <span v-for="tag in form.tags" :key="tag" class="tag-chip">
+                {{ tag }}
+                <button class="tag-chip-remove" @click="removeTag(tag)" type="button" aria-label="Remove tag">×</button>
+              </span>
+            </div>
+            <p v-else class="tag-hint">No tags yet. Tags help users filter documentation on the landing page.</p>
           </div>
         </CoarCard>
       </div>
@@ -56,7 +83,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { CoarCard, CoarTextInput, CoarSelect, CoarNote, CoarSpinner } from '@cocoar/vue-ui';
+import { CoarCard, CoarTextInput, CoarSelect, CoarNote, CoarSpinner, CoarButton } from '@cocoar/vue-ui';
 import { useUI } from '@/composables/useUI';
 import { shelfApi } from '@/core/api/shelf-api';
 import { ApiError } from '@/core/api/http';
@@ -82,7 +109,23 @@ const form = ref({
   description: '',
   source: 'upload',
   visibility: 'public',
+  tags: [] as string[],
+  showWhenEmpty: false,
 });
+
+const tagInput = ref('');
+
+function addTag() {
+  const tag = tagInput.value.trim();
+  if (tag && !form.value.tags.includes(tag)) {
+    form.value.tags.push(tag);
+  }
+  tagInput.value = '';
+}
+
+function removeTag(tag: string) {
+  form.value.tags = form.value.tags.filter(t => t !== tag);
+}
 
 ui.set(ctx => {
   ctx.header.title = isEditMode.value ? 'Edit Product' : 'New Product';
@@ -112,6 +155,8 @@ onMounted(async () => {
     form.value.description = product.description ?? '';
     form.value.source = product.source;
     form.value.visibility = product.visibility;
+    form.value.tags = [...(product.tags ?? [])];
+    form.value.showWhenEmpty = product.showWhenEmpty ?? false;
   } catch {
     error.value = 'Failed to load product';
   } finally {
@@ -130,6 +175,8 @@ async function onSubmit() {
         description: form.value.description || undefined,
         source: form.value.source || undefined,
         visibility: form.value.visibility,
+        tags: form.value.tags,
+        showWhenEmpty: form.value.showWhenEmpty,
       });
       router.push(`/admin/products/${name.value}`);
     } else {
@@ -139,6 +186,8 @@ async function onSubmit() {
         description: form.value.description || undefined,
         source: form.value.source || undefined,
         visibility: form.value.visibility,
+        tags: form.value.tags,
+        showWhenEmpty: form.value.showWhenEmpty,
       });
       router.push(`/admin/products/${form.value.name}`);
     }
@@ -167,6 +216,83 @@ async function onSubmit() {
   gap: 16px;
 }
 
+.mt-4 { margin-top: 16px; }
+
+.tag-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.tag-input-row > :first-child {
+  flex: 1;
+}
+
+.tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 10px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  background: #dbeafe;
+  color: #1183CD;
+  border: 1px solid #bfdbfe;
+}
+
+.tag-chip-remove {
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+  padding: 0;
+  font-size: 1rem;
+  line-height: 1;
+  opacity: 0.6;
+}
+
+.tag-chip-remove:hover { opacity: 1; }
+
+.tag-hint {
+  font-size: 0.82rem;
+  color: #94a3b8;
+  margin: 0;
+}
+
 .mb-4 { margin-bottom: 16px; }
 .center-content { display: flex; justify-content: center; padding: 48px 0; }
+
+.checkbox-field {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+.checkbox-field input { margin-top: 3px; cursor: pointer; flex-shrink: 0; }
+
+.checkbox-field span {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.checkbox-field strong {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--coar-text-neutral-primary, #1e293b);
+}
+
+.checkbox-field small {
+  font-size: 0.78rem;
+  color: var(--coar-text-neutral-secondary, #64748b);
+}
 </style>
