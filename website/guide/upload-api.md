@@ -148,9 +148,10 @@ All API routes use the `/_api/` prefix. See [Authentication](./authentication.md
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
 | `GET` | `/_api/products` | No | List all registered products with version info |
+| `GET` | `/_api/products/{product}` | No | Get a single product with version info |
 | `POST` | `/_api/products` | Yes | Create a new product |
 | `PUT` | `/_api/products/{product}` | Yes | Update a product |
-| `DELETE` | `/_api/products/{product}` | Yes | Delete a product and its config |
+| `DELETE` | `/_api/products/{product}` | Yes | Delete product config. Pass `?deleteData=true` to also delete docs from disk |
 
 ### Versions
 
@@ -184,6 +185,8 @@ Returns all registered products with their version information. No authenticatio
     "description": "Reactive configuration for .NET",
     "source": "upload",
     "visibility": "public",
+    "tags": ["C#", ".NET"],
+    "showWhenEmpty": false,
     "latest": "v5.2.0",
     "versions": ["v5.2.0", "v5.1.0", "v5.0.0"]
   }

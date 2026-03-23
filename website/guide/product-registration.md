@@ -29,7 +29,9 @@ curl -X POST \
     "displayName": "Cocoar.Configuration",
     "description": "Reactive configuration for .NET",
     "source": "upload",
-    "visibility": "public"
+    "visibility": "public",
+    "tags": ["C#", ".NET"],
+    "showWhenEmpty": false
   }' \
   https://docs.cocoar.dev/_api/products
 ```
@@ -43,7 +45,9 @@ curl -X PUT \
   -d '{
     "displayName": "Cocoar.Configuration",
     "description": "Updated description",
-    "visibility": "preview"
+    "visibility": "preview",
+    "tags": ["C#", ".NET", "Configuration"],
+    "showWhenEmpty": true
   }' \
   https://docs.cocoar.dev/_api/products/configuration
 ```
@@ -51,9 +55,15 @@ curl -X PUT \
 ### Delete a Product
 
 ```bash
+# Remove registration only (docs files kept on disk)
 curl -X DELETE \
   -H "Authorization: Bearer $SHELF_API_KEY" \
   https://docs.cocoar.dev/_api/products/configuration
+
+# Remove registration AND all documentation files
+curl -X DELETE \
+  -H "Authorization: Bearer $SHELF_API_KEY" \
+  "https://docs.cocoar.dev/_api/products/configuration?deleteData=true"
 ```
 
 ## JSON Config Files
@@ -78,17 +88,21 @@ Each JSON file describes one product:
   "displayName": "Cocoar.Configuration",
   "description": "Reactive configuration for .NET",
   "source": "upload",
-  "visibility": "public"
+  "visibility": "public",
+  "tags": ["C#", ".NET"],
+  "showWhenEmpty": false
 }
 ```
 
 | Field | Required | Description |
-|-------|----------|-------------|
+|-------|----------|--------------|
 | `name` | Yes | Product identifier, used in URLs and API calls |
 | `displayName` | No | Human-readable name for API responses and landing page |
 | `description` | No | Short description of the product |
 | `source` | No | Deployment source type. Default: `"upload"` |
 | `visibility` | No | `"public"` or `"preview"`. Default: `"public"` |
+| `tags` | No | List of free-form labels (e.g. `["C#", "UI"]`). Used for filtering on the landing page |
+| `showWhenEmpty` | No | Show on landing page even without any deployed versions. Default: `false` |
 
 ::: tip
 The `name` field determines the URL path, not the filename. By convention, keep both in sync (e.g., `configuration.json` with `"name": "configuration"`).
@@ -100,10 +114,36 @@ The `visibility` field controls how a product appears on the landing page:
 
 | Value | Behavior |
 |-------|----------|
-| `"public"` | Shown on the landing page by default (if it has stable versions) |
+| `"public"` | Shown on the landing page by default (if it has stable versions, or `showWhenEmpty` is set) |
 | `"preview"` | Hidden by default, shown when "Show preview" is toggled on |
 
 Preview visibility is useful for products that are in development or not yet ready for general use. The documentation is still accessible via direct URL regardless of visibility.
+
+### Tags
+
+Tags are free-form labels you can attach to a product (e.g. `"C#"`, `"UI"`, `".NET"`, `"CLI"`). They appear as chips on product cards, and the landing page provides a tag filter bar so visitors can narrow down the list to products that interest them.
+
+Tags are stored as an array of strings. Shelf normalises them automatically: leading/trailing whitespace is trimmed, duplicates and empty values are removed, and the list is sorted alphabetically.
+
+```json
+{
+  "tags": ["C#", ".NET", "Configuration"]
+}
+```
+
+### Show When Empty
+
+By default, a product only appears on the landing page once it has at least one deployed version. Set `showWhenEmpty: true` to display the product card immediately — even before any documentation is uploaded. The card is rendered in a distinct teaser style with a "Coming soon" indicator.
+
+This is useful for:
+- **Testing** — verify the product is registered and visible before pushing the first version
+- **Teasers** — announce upcoming documentation while it is still being written
+
+```json
+{
+  "showWhenEmpty": true
+}
+```
 
 ### Live Reload
 
@@ -132,6 +172,8 @@ curl https://docs.cocoar.dev/_api/products
     "description": "Reactive configuration for .NET",
     "source": "upload",
     "visibility": "public",
+    "tags": ["C#", ".NET"],
+    "showWhenEmpty": false,
     "latest": "v5",
     "versions": ["v5", "v4"]
   }

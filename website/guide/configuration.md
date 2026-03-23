@@ -56,7 +56,13 @@ All routes, redirects, and base path rewriting automatically include the prefix:
 
 ## Landing Page
 
-Shelf serves a Vue SPA as the landing page at the root URL (`/` or `{PathBase}/`). The page shows cards for all [registered products](./product-registration.md) that have at least one deployed stable version.
+Shelf serves a Vue SPA as the landing page at the root URL (`/` or `{PathBase}/`). The page shows cards for all [registered products](./product-registration.md) that have at least one deployed stable version, or that have the `showWhenEmpty` flag enabled.
+
+### Tag Filter
+
+All tags used across any registered product are automatically collected and displayed as clickable filter chips in a toolbar above the product grid. Clicking a tag narrows the visible products to those that carry that tag. Multiple tags can be active simultaneously (AND filter). The active selection is persisted in `localStorage` so visitors get the same view on their next visit.
+
+### Preview Toggle
 
 Products with `visibility: "preview"` and pre-release-only versions are hidden by default. A "Show preview" toggle reveals:
 
@@ -64,7 +70,11 @@ Products with `visibility: "preview"` and pre-release-only versions are hidden b
 - Products that only have pre-release versions
 - Pre-release versions on public products
 
-The landing page also includes `<link rel="alternate">` pointing to `/llms.txt` for LLM discoverability.
+This setting is also persisted in `localStorage`.
+
+### Teaser Cards
+
+Products with `showWhenEmpty: true` appear in the grid even without any deployed versions. The card is rendered with a dashed border and a **Coming soon** indicator at the bottom to make the teaser state visually distinct from products with actual documentation.
 
 ## Version Pattern
 

@@ -30,20 +30,22 @@ After logging in, the dashboard shows an overview of your Shelf instance:
 
 1. Click "Create Product" on the dashboard or products page
 2. Fill in the product details:
-   - **Name** -- Product identifier used in URLs (e.g., `configuration`). Cannot be changed after creation.
-   - **Display Name** -- Human-readable name (e.g., `Cocoar.Configuration`)
-   - **Description** -- Short description of the product
-   - **Source** -- Deployment source type (default: `upload`)
-   - **Visibility** -- `public` or `preview`
+   - **Name** — Product identifier used in URLs (e.g., `configuration`). Cannot be changed after creation.
+   - **Display Name** — Human-readable name (e.g., `Cocoar.Configuration`)
+   - **Description** — Short description of the product
+   - **Source** — Deployment source type (default: `upload`)
+   - **Visibility** — `public` or `preview`
+   - **Show when empty** — Display on the landing page even before any version is deployed
+   - **Tags** — Free-form labels (e.g. `C#`, `UI`, `.NET`). Type a tag and press Enter or click Add.
 3. Save the product
 
 ### Editing a Product
 
-Click on a product to edit its display name, description, source, or visibility. The product name (URL identifier) cannot be changed after creation.
+Click on a product name, then click Edit. You can update the display name, description, source, visibility, tags, and the "show when empty" setting. The product name (URL identifier) cannot be changed after creation.
 
 ### Deleting a Product
 
-Delete a product from the product detail view. This removes the product registration but does **not** delete deployed documentation files from disk.
+Delete a product from the product detail view. By default this removes only the product registration (config file). Deployed documentation files on disk are preserved unless you pass `?deleteData=true` to the API.
 
 ### Visibility
 
@@ -52,9 +54,17 @@ Products can be set to `public` or `preview`:
 | Visibility | Landing Page | Direct URL | API |
 |------------|-------------|------------|-----|
 | `public` | Shown by default | Accessible | Listed |
-| `preview` | Hidden (shown with toggle) | Accessible | Listed |
+| `preview` | Hidden (shown with "Show preview" toggle) | Accessible | Listed |
 
-Preview products are useful for documentation that is in development or not yet ready for general discovery. The docs are always accessible via direct URL regardless of visibility.
+Preview products are useful for documentation that is in development or not yet ready for general discovery.
+
+### Tags
+
+Tags are free-form labels that appear on product cards and power the tag filter on the landing page. Add as many tags as you like (e.g. `C#`, `.NET`, `UI`, `CLI`). Use the tag editor in the product form to add and remove tags.
+
+### Show When Empty
+
+Enable **Show when empty** to make a product appear on the landing page before any documentation version has been deployed. The card is shown in a teaser style with a "Coming soon" indicator. Useful for testing registration and for announcing upcoming docs.
 
 ## Managing Versions
 
