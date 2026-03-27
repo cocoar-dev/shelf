@@ -28,10 +28,19 @@ export default defineConfig({
 
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
+      { text: 'Concepts', link: '/concept/access-control' },
       { text: 'LLM Docs', link: '/llms-full.txt', target: '_blank' },
     ],
 
     sidebar: {
+      '/concept/': [
+        {
+          text: 'Concepts',
+          items: [
+            { text: 'Access Control & Multi-Tenancy', link: '/concept/access-control' },
+          ],
+        },
+      ],
       '/guide/': [
         {
           text: 'Introduction',
