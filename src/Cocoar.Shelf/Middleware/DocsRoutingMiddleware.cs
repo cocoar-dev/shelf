@@ -144,7 +144,8 @@ public partial class DocsRoutingMiddleware
                 var content = await File.ReadAllTextAsync(resolvedPath);
                 var rewritten = BasePathRewriter.Rewrite(content, originalBase, targetBase, contentType);
                 await context.Response.WriteAsync(rewritten);
-                RecordAccess(context, product, version, pagePath);
+                if (contentType.Contains("text/html"))
+                    RecordAccess(context, product, version, pagePath);
                 return;
             }
         }
@@ -158,6 +159,10 @@ public partial class DocsRoutingMiddleware
     private void RecordAccess(HttpContext context, string product, string version, string rest)
     {
         if (_accessLog == null)
+            return;
+
+        // Page views only: HEAD requests are health checks / link probes, not visits.
+        if (context.Request.Method != HttpMethods.Get)
             return;
 
         _accessLog.Write(new AccessLogEntry
