@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="flex-1 min-w-0 py-6">
     <div class="stats-grid">
       <div class="stat-card" @click="router.push('/admin/products')">
         <div class="stat-value">{{ products.length }}</div>

@@ -1,5 +1,5 @@
 <template>
-  <div v-if="!isLoading">
+  <div v-if="!isLoading" class="flex-1 min-w-0 py-6">
     <CoarNote v-if="error" variant="error" class="mb-4">{{ error }}</CoarNote>
     <CoarNote v-if="successMessage" variant="success" class="mb-4">{{ successMessage }}</CoarNote>
 
@@ -43,12 +43,9 @@
     <!-- Upload Version -->
     <CoarCard title="Upload Version" class="mb-4">
       <div class="upload-row">
-        <CoarTextInput
-          v-model="uploadVersion"
-          label="Version"
-          placeholder="v1.0.0"
-          class="upload-version-input"
-        />
+        <CoarFormField label="Version" class="upload-version-input">
+          <CoarTextInput v-model="uploadVersion" placeholder="v1.0.0" />
+        </CoarFormField>
         <div class="upload-file">
           <label class="file-label">ZIP File</label>
           <input type="file" accept=".zip" @change="onFileSelected" ref="fileInput" />
@@ -104,9 +101,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { CoarCard, CoarButton, CoarTextInput, CoarNote, CoarTable, CoarTag, CoarSpinner } from '@cocoar/vue-ui';
+import { CoarCard, CoarButton, CoarTextInput, CoarNote, CoarTable, CoarTag, CoarSpinner, CoarFormField } from '@cocoar/vue-ui';
+import { useFragmentNavigation, useRoutedModals } from '@cocoar/vue-fragment-parser';
 import { useUI } from '@/composables/useUI';
 import { shelfApi } from '@/core/api/shelf-api';
 import { ApiError } from '@/core/api/http';
@@ -115,6 +113,13 @@ import type { Product } from '@/core/models/shelf.models';
 const route = useRoute();
 const router = useRouter();
 const ui = useUI();
+useRoutedModals();
+const { navigateToModal } = useFragmentNavigation();
+
+// The edit modal lives on the URL hash; when it closes (hash clears) the data may have changed.
+watch(() => route.hash, (hash, oldHash) => {
+  if (!hash && oldHash) loadProduct();
+});
 
 const name = route.params.name as string;
 const product = ref<Product | null>(null);
@@ -140,7 +145,7 @@ ui.set(ctx => {
   ctx.footer.button2.onClick = () => onDeleteProduct();
   ctx.footer.button3.visible = true;
   ctx.footer.button3.text = 'Edit';
-  ctx.footer.button3.onClick = () => router.push(`/admin/products/${name}/edit`);
+  ctx.footer.button3.onClick = () => navigateToModal(name);
 });
 
 onMounted(loadProduct);

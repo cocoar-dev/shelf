@@ -21,10 +21,32 @@ export const router = createRouter({
       component: () => import('@/layouts/AdminLayout.vue'),
       children: [
         { path: '', component: () => import('@/views/DashboardView.vue') },
-        { path: 'products', component: () => import('@/views/products/ProductListView.vue') },
-        { path: 'products/create', component: () => import('@/views/products/ProductFormView.vue') },
-        { path: 'products/:name', component: () => import('@/views/products/ProductDetailView.vue') },
-        { path: 'products/:name/edit', component: () => import('@/views/products/ProductFormView.vue') },
+        {
+          path: 'products',
+          component: () => import('@/views/products/ProductListView.vue'),
+          meta: {
+            routedFragments: [
+              {
+                type: 'modal',
+                path: ':id',
+                component: () => import('@/views/products/ProductFormModal.vue'),
+              },
+            ],
+          },
+        },
+        {
+          path: 'products/:name',
+          component: () => import('@/views/products/ProductDetailView.vue'),
+          meta: {
+            routedFragments: [
+              {
+                type: 'modal',
+                path: ':id',
+                component: () => import('@/views/products/ProductFormModal.vue'),
+              },
+            ],
+          },
+        },
         { path: 'profile', component: () => import('@/views/ProfileView.vue') },
         {
           path: 'analytics',

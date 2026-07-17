@@ -9,14 +9,14 @@
 
       <!-- Step: Email -->
       <form v-if="step === 'email'" @submit.prevent="onRequestCode">
-        <CoarTextInput
-          v-model="email"
-          label="Email"
-          type="email"
-          placeholder="your@email.com"
-          :disabled="isLoading"
-          required
-        />
+        <CoarFormField label="Email" :disabled="isLoading" required>
+          <CoarTextInput
+            v-model="email"
+            type="email"
+            placeholder="your@email.com"
+            autocomplete="email"
+          />
+        </CoarFormField>
 
         <CoarNote v-if="error" variant="error" class="mt-3">{{ error }}</CoarNote>
 
@@ -37,15 +37,14 @@
           If <strong>{{ email }}</strong> is registered, a 6-digit code is on its way.
         </CoarNote>
 
-        <CoarTextInput
-          v-model="code"
-          label="Login Code"
-          placeholder="000000"
-          inputmode="numeric"
-          autocomplete="one-time-code"
-          :disabled="isLoading"
-          required
-        />
+        <CoarFormField label="Login Code" :disabled="isLoading" required>
+          <CoarTextInput
+            v-model="code"
+            placeholder="000000"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+          />
+        </CoarFormField>
 
         <CoarNote v-if="error" variant="error" class="mt-3">{{ error }}</CoarNote>
 
@@ -70,7 +69,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { CoarTextInput, CoarButton, CoarNote } from '@cocoar/vue-ui';
+import { CoarTextInput, CoarButton, CoarNote, CoarFormField } from '@cocoar/vue-ui';
 import { useAuthStore } from '@/stores/auth.store';
 
 const router = useRouter();

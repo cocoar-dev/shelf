@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { CoarDataGrid, CoarGridBuilder } from '@cocoar/vue-data-grid';
 import { CoarButton, CoarContextMenu, CoarMenuItem, CoarMenuDivider, useContextMenu } from '@cocoar/vue-ui';
+import { useFragmentNavigation, useRoutedModals } from '@cocoar/vue-fragment-parser';
 import { useUI } from '@/composables/useUI';
-import { shelfApi } from '@/core/api/shelf-api';
+import { useProductsStore } from '@/stores/products.store';
 import type { Product } from '@/core/models/shelf.models';
 
 const router = useRouter();
 const ui = useUI();
-const products = ref<Product[]>([]);
-const selectedNames = ref<string[]>([]);
+useRoutedModals();
+const { navigateToModal } = useFragmentNavigation();
+const productsStore = useProductsStore();
+
+const contextProduct = ref<Product | undefined>();
 const cellMenu = useContextMenu();
 const viewportMenu = useContextMenu();
 
@@ -21,10 +25,12 @@ ui.set((ctx) => {
   ctx.content.container = false;
 });
 
+const rowData = computed(() => productsStore.items);
+
 const builder = CoarGridBuilder.create<Product>()
   .persistColumnState('shelf-products')
   .option('getRowId', (p: any) => p.data.name)
-  .rowDataRef(products)
+  .rowDataRef(rowData)
   .searchHighlight()
   .rowSelection('single')
   .onCellDoubleClicked((event: any) => {
@@ -35,7 +41,7 @@ const builder = CoarGridBuilder.create<Product>()
       event.api.deselectAll();
       event.node.setSelected(true);
     }
-    selectedNames.value = event.api.getSelectedRows().map((r: Product) => r.name);
+    contextProduct.value = event.data;
     cellMenu.open(event.event as MouseEvent);
   })
   .onViewportContextMenu(($event: any) => {
@@ -51,38 +57,34 @@ const builder = CoarGridBuilder.create<Product>()
     (col: any) => col.field('source').header('Source').width(100),
   ]);
 
-async function loadProducts() {
-  products.value = await shelfApi.getProducts();
-}
-
 async function deleteProduct() {
-  const name = selectedNames.value[0];
+  const name = contextProduct.value?.name;
   if (!name || !confirm(`Delete product "${name}"?`)) return;
-  await shelfApi.deleteProduct(name);
-  await loadProducts();
+  await productsStore.remove(name);
 }
 
-onMounted(loadProducts);
+onMounted(() => productsStore.loadAll());
 </script>
 
 <template>
   <div class="flex flex-1 flex-col min-w-0 p-4">
     <CoarDataGrid :builder="builder" show-search class="flex-1 min-h-0" bordered elevated>
       <template #toolbar-right>
-        <CoarButton size="s" icon-start="plus" @click="router.push('/admin/products/create')">New Product</CoarButton>
+        <CoarButton size="s" icon-start="plus" @click="navigateToModal('create')">New Product</CoarButton>
       </template>
     </CoarDataGrid>
 
     <CoarContextMenu :menu="cellMenu">
-      <CoarMenuItem label="Open" icon="external-link" @clicked="router.push(`/admin/products/${selectedNames[0]}`)" />
-      <CoarMenuItem label="Edit" icon="pencil" @clicked="router.push(`/admin/products/${selectedNames[0]}/edit`)" />
+      <CoarMenuItem label="Open" icon="external-link" @clicked="contextProduct && router.push(`/admin/products/${contextProduct.name}`)" />
+      <CoarMenuItem label="Edit" icon="pencil" @clicked="contextProduct && navigateToModal(contextProduct.name)" />
+      <CoarMenuItem label="New Product" icon="plus" @clicked="navigateToModal('create')" />
       <CoarMenuDivider />
       <CoarMenuItem label="Delete" icon="trash-2" @clicked="deleteProduct" />
     </CoarContextMenu>
 
     <CoarContextMenu :menu="viewportMenu">
-      <CoarMenuItem label="New Product" icon="plus" @clicked="router.push('/admin/products/create')" />
-      <CoarMenuItem label="Refresh" icon="refresh-cw" @clicked="loadProducts" />
+      <CoarMenuItem label="New Product" icon="plus" @clicked="navigateToModal('create')" />
+      <CoarMenuItem label="Refresh" icon="refresh-cw" @clicked="productsStore.loadAll()" />
     </CoarContextMenu>
   </div>
 </template>

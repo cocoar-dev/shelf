@@ -225,6 +225,7 @@ onMounted(load);
 .analytics-root {
   flex: 1;
   min-width: 0;
+  padding: 24px 0;
 }
 
 .filter-row {
