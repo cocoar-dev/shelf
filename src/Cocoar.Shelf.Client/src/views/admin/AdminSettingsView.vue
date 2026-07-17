@@ -27,6 +27,12 @@ function isActive(path: string): boolean {
     <div class="sub-nav flex-shrink-0 p-4 flex flex-col min-h-0">
       <CoarMenu>
         <CoarMenuItem
+          icon="key-round"
+          label="General"
+          :class="{ 'admin-menu-item--active': isActive('/admin/settings/general') }"
+          @clicked="router.push('/admin/settings/general')"
+        />
+        <CoarMenuItem
           icon="users"
           label="Users"
           :class="{ 'admin-menu-item--active': isActive('/admin/settings/users') }"

@@ -17,6 +17,7 @@ public static partial class ApiEndpoints
         // Auth (modgud-brokered login + thin local user layer)
         api.MapAuthEndpoints();
         api.MapUserEndpoints();
+        api.MapSettingsEndpoints();
 
         // Test-only sign-in seam — mapped exclusively for the integration test host.
         if (options.TestAuth)

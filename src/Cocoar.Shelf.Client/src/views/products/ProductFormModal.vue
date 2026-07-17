@@ -33,6 +33,9 @@ const form = ref({
 });
 
 const tagInput = ref('');
+const hasApiKey = ref(false);
+const newApiKey = ref('');
+const removeApiKey = ref(false);
 
 const modalTitle = computed(() => {
   if (isCreate.value) return 'New Product';
@@ -61,6 +64,7 @@ onMounted(async () => {
       tags: [...(product.tags ?? [])],
       showWhenEmpty: product.showWhenEmpty ?? false,
     };
+    hasApiKey.value = product.hasApiKey ?? false;
   } catch {
     error.value = 'Failed to load product';
   } finally {
@@ -83,6 +87,8 @@ async function save() {
   error.value = '';
   saving.value = true;
   try {
+    // API key semantics: undefined = keep, '' = remove, value = set/replace.
+    const apiKey = removeApiKey.value ? '' : (newApiKey.value.trim() || undefined);
     const payload = {
       displayName: form.value.displayName || undefined,
       description: form.value.description || undefined,
@@ -90,6 +96,7 @@ async function save() {
       visibility: form.value.visibility,
       tags: form.value.tags,
       showWhenEmpty: form.value.showWhenEmpty,
+      apiKey,
     };
     if (isCreate.value) {
       await productsStore.create({ name: form.value.name.trim(), ...payload });
@@ -159,6 +166,24 @@ async function save() {
       </section>
 
       <section>
+        <div class="section-heading">API Key</div>
+        <p class="section-desc">
+          Per-product upload key for CI/CD (<code>Authorization: Bearer</code>), valid only for
+          this product. Write-only — the value is never shown again.
+          <template v-if="hasApiKey">A key is currently set.</template>
+        </p>
+        <CoarFormField :label="hasApiKey ? 'Replace key' : 'Set key (optional)'">
+          <CoarTextInput v-model="newApiKey" placeholder="Leave empty to keep unchanged" clearable :disabled="removeApiKey" />
+        </CoarFormField>
+        <CoarCheckbox
+          v-if="hasApiKey"
+          v-model="removeApiKey"
+          label="Remove the existing key"
+          class="mt-2"
+        />
+      </section>
+
+      <section>
         <div class="section-heading">Options</div>
         <CoarCheckbox
           v-model="form.showWhenEmpty"
@@ -187,6 +212,22 @@ async function save() {
   padding-bottom: 4px;
   margin-bottom: 10px;
 }
+
+.section-desc {
+  font-size: 0.8rem;
+  color: var(--coar-text-neutral-secondary);
+  margin: 0 0 10px;
+  line-height: 1.5;
+}
+
+.section-desc code {
+  font-size: 0.75rem;
+  background: var(--coar-background-neutral-secondary);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.mt-2 { margin-top: 8px; }
 
 .tag-input-row {
   display: flex;

@@ -58,7 +58,8 @@ export const router = createRouter({
           component: () => import('@/views/admin/AdminSettingsView.vue'),
           meta: { admin: true },
           children: [
-            { path: '', redirect: '/admin/settings/users' },
+            { path: '', redirect: '/admin/settings/general' },
+            { path: 'general', component: () => import('@/views/admin/GeneralSettingsView.vue') },
             { path: 'users', component: () => import('@/views/admin/UserListView.vue') },
             { path: 'access-log', component: () => import('@/views/admin/AccessLogView.vue') },
             { path: 'geoip', component: () => import('@/views/admin/GeoIpView.vue') },

@@ -43,7 +43,13 @@ public partial class ApiKeyFilter(ILogger<ApiKeyFilter> logger) : IEndpointFilte
                 return await next(context);
         }
 
-        // Fallback: check global API key
+        // UI-managed master key (settings document)
+        var settings = context.HttpContext.RequestServices.GetService<ISettingsService>();
+        var masterKey = settings?.Current.MasterApiKey;
+        if (!string.IsNullOrEmpty(masterKey) && provided == masterKey)
+            return await next(context);
+
+        // Fallback: the env/config bootstrap key
         ShelfOptions options;
         try
         {

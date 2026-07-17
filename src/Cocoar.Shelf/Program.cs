@@ -75,6 +75,10 @@ builder.Services.AddMarten(opts =>
     opts.Schema.For<ProductConfig>()
         .DatabaseSchemaName("shelf")
         .Identity(x => x.Name);
+
+    // Global runtime settings (single document)
+    opts.Schema.For<ShelfSettings>()
+        .DatabaseSchemaName("shelf");
 })
 .UseLightweightSessions()
 .ApplyAllDatabaseChangesOnStartup();
@@ -130,6 +134,7 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddSingleton<IManifestService, ManifestService>();
 builder.Services.AddSingleton<IUploadService, UploadService>();
 builder.Services.AddSingleton<BasePathDetector>();
+builder.Services.AddSingleton<ISettingsService, SettingsService>();
 
 builder.Services.AddSingleton<IProductConfigService, MartenProductConfigService>();
 builder.Services.AddHostedService<ProductConfigMigrationService>();
