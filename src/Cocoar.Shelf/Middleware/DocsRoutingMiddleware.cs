@@ -70,6 +70,9 @@ public partial class DocsRoutingMiddleware
         string version;
 
         var restSegments = rest.Split('/', 2);
+        // Page path WITHOUT the version segment — this is what the access log stores
+        // (Path = "guide/intro", not "v1/guide/intro").
+        var pagePath = restSegments.Length > 1 ? restSegments[1] : "";
         if (restSegments[0].Length > 0 && GetVersionRegex().IsMatch(restSegments[0]))
         {
             version = restSegments[0];
@@ -141,7 +144,7 @@ public partial class DocsRoutingMiddleware
                 var content = await File.ReadAllTextAsync(resolvedPath);
                 var rewritten = BasePathRewriter.Rewrite(content, originalBase, targetBase, contentType);
                 await context.Response.WriteAsync(rewritten);
-                RecordAccess(context, product, version, rest);
+                RecordAccess(context, product, version, pagePath);
                 return;
             }
         }
@@ -149,7 +152,7 @@ public partial class DocsRoutingMiddleware
         await context.Response.SendFileAsync(resolvedPath);
 
         if (contentType.Contains("text/html"))
-            RecordAccess(context, product, version, rest);
+            RecordAccess(context, product, version, pagePath);
     }
 
     private void RecordAccess(HttpContext context, string product, string version, string rest)
