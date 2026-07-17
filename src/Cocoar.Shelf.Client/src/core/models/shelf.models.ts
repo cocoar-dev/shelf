@@ -42,5 +42,6 @@ export interface UpdateProductRequest {
 
 export interface ShelfSettingsInfo {
   hasMasterApiKey: boolean;
+  masterApiKey: string | null;
   hasConfigApiKey: boolean;
 }

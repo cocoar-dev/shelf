@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import { CoarCard, CoarButton, CoarTag, CoarNote, CoarFormField, CoarTextInput } from '@cocoar/vue-ui';
 import { http } from '@/core/api/http';
+import { generateApiKey, copyToClipboard } from '@/core/api-key-utils';
 import type { ShelfSettingsInfo } from '@/core/models/shelf.models';
 
 const settings = ref<ShelfSettingsInfo | null>(null);
@@ -9,6 +10,7 @@ const newKey = ref('');
 const saving = ref(false);
 const message = ref('');
 const error = ref('');
+const copied = ref(false);
 
 async function load() {
   try {
@@ -19,10 +21,13 @@ async function load() {
 }
 
 function generateKey() {
-  const bytes = new Uint8Array(24);
-  crypto.getRandomValues(bytes);
-  newKey.value = 'shelf_' + btoa(String.fromCharCode(...bytes))
-    .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  newKey.value = generateApiKey();
+}
+
+async function copyKey() {
+  if (!settings.value?.masterApiKey) return;
+  copied.value = await copyToClipboard(settings.value.masterApiKey);
+  setTimeout(() => { copied.value = false; }, 1500);
 }
 
 async function saveKey() {
@@ -31,7 +36,8 @@ async function saveKey() {
   saving.value = true;
   try {
     await http.put('/settings/api-key', { apiKey: newKey.value });
-    message.value = 'Master API key saved. Store it now — it cannot be displayed again.';
+    newKey.value = '';
+    message.value = 'Master API key saved.';
     await load();
   } catch (e) {
     error.value = e instanceof Error ? e.message : 'Failed to save key';
@@ -68,15 +74,16 @@ onMounted(load);
       <p class="desc">
         Authorizes CI/CD uploads and product management via
         <code>Authorization: Bearer &lt;key&gt;</code> for <strong>all</strong> products.
-        Keys are write-only — the value is never shown again after saving. For per-product
-        keys, use the API Key field on the product itself.
+        For per-product keys, use the API Key field on the product itself.
       </p>
 
       <div class="status-row">
         <span class="status-label">UI-managed key</span>
-        <CoarTag :variant="settings?.hasMasterApiKey ? 'success' : 'neutral'" size="s">
-          {{ settings?.hasMasterApiKey ? 'Set' : 'Not set' }}
-        </CoarTag>
+        <template v-if="settings?.masterApiKey">
+          <code class="key-value">{{ settings.masterApiKey }}</code>
+          <CoarButton variant="ghost" size="s" @click="copyKey">{{ copied ? 'Copied!' : 'Copy' }}</CoarButton>
+        </template>
+        <CoarTag v-else variant="neutral" size="s">Not set</CoarTag>
       </div>
       <div class="status-row">
         <span class="status-label">Config/env key</span>
@@ -150,6 +157,17 @@ onMounted(load);
 .status-label {
   min-width: 130px;
   color: var(--coar-text-neutral-secondary);
+  flex-shrink: 0;
+}
+
+.key-value {
+  font-size: 0.82rem;
+  background: var(--coar-background-neutral-secondary);
+  padding: 3px 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .status-hint {

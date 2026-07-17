@@ -8,6 +8,7 @@ import ModalLayout from '@/components/ModalLayout.vue';
 import { useProductsStore } from '@/stores/products.store';
 import { shelfApi } from '@/core/api/shelf-api';
 import { ApiError } from '@/core/api/http';
+import { generateApiKey, copyToClipboard } from '@/core/api-key-utils';
 
 const props = defineProps<{
   id: string
@@ -40,6 +41,9 @@ const tagInput = ref('');
 const hasApiKey = ref(false);
 const newApiKey = ref('');
 const removeApiKey = ref(false);
+// Admins get the key revealed and edit it in place; non-admins fall back to write-only.
+const keyRevealed = ref(false);
+const keyCopied = ref(false);
 
 // Versions tab state (edit mode only)
 const versions = ref<string[]>([]);
@@ -79,6 +83,14 @@ async function loadProduct() {
   hasApiKey.value = product.hasApiKey ?? false;
   versions.value = [...(product.versions ?? [])];
   latest.value = product.latest;
+
+  try {
+    const reveal = await shelfApi.getProductApiKey(props.id);
+    newApiKey.value = reveal.apiKey ?? '';
+    keyRevealed.value = true;
+  } catch {
+    keyRevealed.value = false; // not admin — keep the write-only flow
+  }
 }
 
 onMounted(async () => {
@@ -103,13 +115,22 @@ function removeTag(tag: string) {
   form.value.tags = form.value.tags.filter(t => t !== tag);
 }
 
+async function copyKey() {
+  if (!newApiKey.value) return;
+  keyCopied.value = await copyToClipboard(newApiKey.value);
+  setTimeout(() => { keyCopied.value = false; }, 1500);
+}
+
 async function save() {
   if (!form.value.name.trim()) return;
   error.value = '';
   saving.value = true;
   try {
-    // API key semantics: undefined = keep, '' = remove, value = set/replace.
-    const apiKey = removeApiKey.value ? '' : (newApiKey.value.trim() || undefined);
+    // Revealed (admin): the field IS the key — empty removes it.
+    // Write-only fallback: undefined = keep, '' = remove, value = set/replace.
+    const apiKey = keyRevealed.value
+      ? newApiKey.value.trim()
+      : (removeApiKey.value ? '' : (newApiKey.value.trim() || undefined));
     const payload = {
       displayName: form.value.displayName || undefined,
       description: form.value.description || undefined,
@@ -252,18 +273,37 @@ async function onDeleteVersion(version: string) {
                 <div class="section-heading">API Key</div>
                 <p class="section-desc">
                   Per-product upload key for CI/CD (<code>Authorization: Bearer</code>), valid only for
-                  this product. Write-only — the value is never shown again.
-                  <template v-if="hasApiKey">A key is currently set.</template>
+                  this product.
                 </p>
-                <CoarFormField :label="hasApiKey ? 'Replace key' : 'Set key (optional)'">
-                  <CoarTextInput v-model="newApiKey" placeholder="Leave empty to keep unchanged" clearable :disabled="removeApiKey" />
-                </CoarFormField>
-                <CoarCheckbox
-                  v-if="hasApiKey"
-                  v-model="removeApiKey"
-                  label="Remove the existing key"
-                  class="mt-2"
-                />
+                <template v-if="keyRevealed || isCreate">
+                  <div class="key-edit-row">
+                    <CoarFormField label="API Key" hint="Leave empty for no key" class="flex-1">
+                      <CoarTextInput v-model="newApiKey" placeholder="shelf_…" clearable />
+                    </CoarFormField>
+                    <CoarButton variant="secondary" size="s" class="key-edit-btn" @click="newApiKey = generateApiKey()">Generate</CoarButton>
+                    <CoarButton
+                      v-if="newApiKey"
+                      variant="ghost"
+                      size="s"
+                      class="key-edit-btn"
+                      @click="copyKey"
+                    >
+                      {{ keyCopied ? 'Copied!' : 'Copy' }}
+                    </CoarButton>
+                  </div>
+                </template>
+                <template v-else>
+                  <p class="section-desc" v-if="hasApiKey">A key is currently set.</p>
+                  <CoarFormField :label="hasApiKey ? 'Replace key' : 'Set key (optional)'">
+                    <CoarTextInput v-model="newApiKey" placeholder="Leave empty to keep unchanged" clearable :disabled="removeApiKey" />
+                  </CoarFormField>
+                  <CoarCheckbox
+                    v-if="hasApiKey"
+                    v-model="removeApiKey"
+                    label="Remove the existing key"
+                    class="mt-2"
+                  />
+                </template>
               </section>
             </div>
           </template>
@@ -404,6 +444,16 @@ async function onDeleteVersion(version: string) {
   display: flex;
   gap: 8px;
   align-items: center;
+}
+
+.key-edit-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.key-edit-btn {
+  margin-top: 23px;
 }
 
 .tag-chips {

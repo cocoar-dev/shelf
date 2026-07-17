@@ -49,6 +49,30 @@ public class SettingsApiTests
     }
 
     [Fact]
+    public async Task ProductApiKey_Reveal_IsAdminOnly()
+    {
+        _fixture.RegisterProduct("keyreveal-product");
+
+        var anon = _fixture.CreateClient();
+        Assert.Equal(HttpStatusCode.Unauthorized,
+            (await anon.GetAsync("/_api/products/keyreveal-product/api-key")).StatusCode);
+
+        var plain = await _fixture.CreateSignedInClientAsync("keyreveal-plain@shelf.test");
+        Assert.Equal(HttpStatusCode.Forbidden,
+            (await plain.GetAsync("/_api/products/keyreveal-product/api-key")).StatusCode);
+
+        var admin = await _fixture.CreateSignedInClientAsync("keyreveal-admin@shelf.test", admin: true);
+        var update = await admin.PutAsJsonAsync("/_api/products/keyreveal-product",
+            new { apiKey = "product-key-abc-123" });
+        Assert.Equal(HttpStatusCode.OK, update.StatusCode);
+
+        var reveal = await admin.GetAsync("/_api/products/keyreveal-product/api-key");
+        Assert.Equal(HttpStatusCode.OK, reveal.StatusCode);
+        var doc = JsonDocument.Parse(await reveal.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal("product-key-abc-123", doc.GetProperty("apiKey").GetString());
+    }
+
+    [Fact]
     public async Task MasterApiKey_WorksAsBearer_AndClearRevokesIt()
     {
         var admin = await _fixture.CreateSignedInClientAsync("settings-key-admin@shelf.test", admin: true);
@@ -56,6 +80,11 @@ public class SettingsApiTests
 
         var set = await admin.PutAsJsonAsync("/_api/settings/api-key", new { apiKey = key });
         Assert.Equal(HttpStatusCode.OK, set.StatusCode);
+
+        // Admins can read the key back (docs hosting, not an IdP — keys are recoverable).
+        var settings = await admin.GetAsync("/_api/settings/");
+        var settingsDoc = JsonDocument.Parse(await settings.Content.ReadAsStringAsync()).RootElement;
+        Assert.Equal(key, settingsDoc.GetProperty("masterApiKey").GetString());
 
         // The UI-managed key authorizes CI-style bearer calls...
         var bearer = _fixture.CreateClient();

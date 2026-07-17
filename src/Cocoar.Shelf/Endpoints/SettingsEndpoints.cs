@@ -5,8 +5,8 @@ namespace Cocoar.Shelf.Endpoints;
 public record SetMasterApiKeyRequest(string? ApiKey);
 
 /// <summary>
-/// Admin-managed global settings. Keys are write-only: responses only ever say whether a key
-/// is set, never the value.
+/// Admin-managed global settings. Shelf hosts documentation, not secrets — API keys are
+/// deliberately readable for admins (unlike an IdP, losing one is a nuisance, not a breach).
 /// </summary>
 public static partial class SettingsEndpoints
 {
@@ -24,6 +24,7 @@ public static partial class SettingsEndpoints
         Results.Ok(new
         {
             hasMasterApiKey = !string.IsNullOrEmpty(settingsService.Current.MasterApiKey),
+            masterApiKey = settingsService.Current.MasterApiKey,
             // The env/config bootstrap key stays valid alongside the UI-managed one.
             hasConfigApiKey = !string.IsNullOrEmpty(options.ApiKey),
         });

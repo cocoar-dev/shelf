@@ -29,6 +29,10 @@ public static partial class ApiEndpoints
         api.MapGet("/products/{product}/versions", GetVersions);
         api.MapGet("/shelf-config", GetShelfConfig);
 
+        // Key reveal is admin-only — the product read endpoints above are public.
+        api.MapGet("/products/{product}/api-key", GetProductApiKey)
+            .RequireAuthorization("Admin");
+
         api.MapAnalyticsEndpoints();
 
         // Protected write endpoints (cookie or Bearer API key)
@@ -153,6 +157,14 @@ public static partial class ApiEndpoints
 
     private static IResult GetShelfConfig(ShelfOptions options) =>
         Results.Ok(new { pathBase = options.PathBase });
+
+    private static IResult GetProductApiKey(string product, IProductConfigService configService)
+    {
+        var config = configService.GetConfig(product);
+        return config == null
+            ? Results.Json(new { error = $"Product '{product}' is not registered" }, statusCode: 404)
+            : Results.Ok(new { apiKey = config.ApiKey });
+    }
 
     private static async Task<IResult> UploadVersion(
         string product,
