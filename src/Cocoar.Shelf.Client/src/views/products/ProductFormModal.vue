@@ -186,7 +186,7 @@ async function onDeleteVersion(version: string) {
     width="46rem"
     :footer-button="footerButton"
   >
-    <div v-if="!loading" class="flex flex-col flex-1 min-h-0">
+    <div v-if="!loading" class="tabs-host flex flex-col flex-1 min-h-0">
       <CoarNote v-if="error" variant="error" class="mb-3">{{ error }}</CoarNote>
 
       <CoarTabGroup v-model="activeTab">
@@ -350,6 +350,20 @@ async function onDeleteVersion(version: string) {
 </template>
 
 <style scoped>
+/* Only the tab CONTENT scrolls — the tab bar stays fixed in view. */
+.tabs-host :deep(.coar-tab-group) {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.tabs-host :deep(.coar-tab-content) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
 .tab-panel {
   padding-top: 16px;
 }
