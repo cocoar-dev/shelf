@@ -17,7 +17,7 @@
         <RouterLink
           v-for="product in products"
           :key="product.name"
-          :to="`/admin/products/${product.name}`"
+          :to="`/admin/products#${product.name}`"
           class="product-item"
         >
           <div class="product-name">{{ product.displayName || product.name }}</div>

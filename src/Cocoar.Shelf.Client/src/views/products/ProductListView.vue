@@ -34,7 +34,7 @@ const builder = CoarGridBuilder.create<Product>()
   .searchHighlight()
   .rowSelection('single')
   .onCellDoubleClicked((event: any) => {
-    if (event.data) router.push(`/admin/products/${event.data.name}`);
+    if (event.data) navigateToModal(event.data.name);
   })
   .onCellContextMenu((event: any) => {
     if (!event.node.isSelected()) {
@@ -64,6 +64,10 @@ async function deleteProduct() {
   await productsStore.remove(name);
 }
 
+function openDocs(product: Product) {
+  if (product.versions.length > 0) window.open(`/${product.name}/`, '_blank');
+}
+
 onMounted(() => productsStore.loadAll());
 </script>
 
@@ -76,11 +80,11 @@ onMounted(() => productsStore.loadAll());
     </CoarDataGrid>
 
     <CoarContextMenu :menu="cellMenu">
-      <CoarMenuItem label="Open" icon="external-link" @clicked="contextProduct && router.push(`/admin/products/${contextProduct.name}`)" />
       <CoarMenuItem label="Edit" icon="pencil" @clicked="contextProduct && navigateToModal(contextProduct.name)" />
+      <CoarMenuItem label="Open Docs" icon="external-link" @clicked="contextProduct && openDocs(contextProduct)" />
       <CoarMenuItem label="New Product" icon="plus" @clicked="navigateToModal('create')" />
       <CoarMenuDivider />
-      <CoarMenuItem label="Delete" icon="trash-2" @clicked="deleteProduct" />
+      <CoarMenuItem label="Delete Product" icon="trash-2" @clicked="deleteProduct" />
     </CoarContextMenu>
 
     <CoarContextMenu :menu="viewportMenu">

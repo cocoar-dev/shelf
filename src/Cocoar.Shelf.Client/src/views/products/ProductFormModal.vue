@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
-import { CoarTextInput, CoarSelect, CoarCheckbox, CoarNote, CoarButton, CoarFormField } from '@cocoar/vue-ui';
+import {
+  CoarTextInput, CoarSelect, CoarCheckbox, CoarNote, CoarButton, CoarFormField,
+  CoarTabGroup, CoarTab, CoarTable, CoarTag,
+} from '@cocoar/vue-ui';
 import ModalLayout from '@/components/ModalLayout.vue';
 import { useProductsStore } from '@/stores/products.store';
 import { shelfApi } from '@/core/api/shelf-api';
@@ -16,6 +19,7 @@ const isCreate = computed(() => props.id === 'create');
 const loading = ref(false);
 const saving = ref(false);
 const error = ref('');
+const activeTab = ref('general');
 
 const visibilityOptions = [
   { value: 'public', label: 'Public' },
@@ -37,6 +41,17 @@ const hasApiKey = ref(false);
 const newApiKey = ref('');
 const removeApiKey = ref(false);
 
+// Versions tab state (edit mode only)
+const versions = ref<string[]>([]);
+const latest = ref<string | null>(null);
+const uploadVersion = ref('');
+const uploadFile = ref<File | null>(null);
+const fileInput = ref<HTMLInputElement | null>(null);
+const uploading = ref(false);
+const deletingVersion = ref<string | null>(null);
+const versionsMessage = ref('');
+const versionsError = ref('');
+
 const modalTitle = computed(() => {
   if (isCreate.value) return 'New Product';
   return form.value.displayName || props.id;
@@ -50,21 +65,27 @@ const footerButton = computed(() => ({
   onClick: save,
 }));
 
+async function loadProduct() {
+  const product = await shelfApi.getProduct(props.id);
+  form.value = {
+    name: product.name,
+    displayName: product.displayName ?? '',
+    description: product.description ?? '',
+    source: product.source,
+    visibility: product.visibility,
+    tags: [...(product.tags ?? [])],
+    showWhenEmpty: product.showWhenEmpty ?? false,
+  };
+  hasApiKey.value = product.hasApiKey ?? false;
+  versions.value = [...(product.versions ?? [])];
+  latest.value = product.latest;
+}
+
 onMounted(async () => {
   if (isCreate.value) return;
   loading.value = true;
   try {
-    const product = await shelfApi.getProduct(props.id);
-    form.value = {
-      name: product.name,
-      displayName: product.displayName ?? '',
-      description: product.description ?? '',
-      source: product.source,
-      visibility: product.visibility,
-      tags: [...(product.tags ?? [])],
-      showWhenEmpty: product.showWhenEmpty ?? false,
-    };
-    hasApiKey.value = product.hasApiKey ?? false;
+    await loadProduct();
   } catch {
     error.value = 'Failed to load product';
   } finally {
@@ -110,6 +131,50 @@ async function save() {
     saving.value = false;
   }
 }
+
+// --- Versions tab actions (immediate, independent of Save) ---
+
+function onFileSelected(event: Event) {
+  const input = event.target as HTMLInputElement;
+  uploadFile.value = input.files?.[0] ?? null;
+}
+
+async function onUpload() {
+  if (!uploadVersion.value || !uploadFile.value) return;
+  uploading.value = true;
+  versionsError.value = '';
+  versionsMessage.value = '';
+  try {
+    await shelfApi.uploadVersion(props.id, uploadVersion.value, uploadFile.value);
+    versionsMessage.value = `Version ${uploadVersion.value} uploaded`;
+    uploadVersion.value = '';
+    uploadFile.value = null;
+    if (fileInput.value) fileInput.value.value = '';
+    await loadProduct();
+    await productsStore.loadAll();
+  } catch (err) {
+    versionsError.value = err instanceof ApiError ? err.message : 'Upload failed';
+  } finally {
+    uploading.value = false;
+  }
+}
+
+async function onDeleteVersion(version: string) {
+  if (!confirm(`Delete version ${version}? This cannot be undone.`)) return;
+  deletingVersion.value = version;
+  versionsError.value = '';
+  versionsMessage.value = '';
+  try {
+    await shelfApi.deleteVersion(props.id, version);
+    versionsMessage.value = `Version ${version} deleted`;
+    await loadProduct();
+    await productsStore.loadAll();
+  } catch (err) {
+    versionsError.value = err instanceof ApiError ? err.message : 'Failed to delete version';
+  } finally {
+    deletingVersion.value = null;
+  }
+}
 </script>
 
 <template>
@@ -118,79 +183,166 @@ async function save() {
     :title="modalTitle"
     :sub-title="isCreate ? 'Register a new documentation product' : `Editing ${props.id}`"
     icon="book-open"
+    width="46rem"
     :footer-button="footerButton"
   >
-    <form v-if="!loading" class="flex flex-col gap-4" @submit.prevent="save">
-      <CoarNote v-if="error" variant="error">{{ error }}</CoarNote>
+    <div v-if="!loading" class="flex flex-col flex-1 min-h-0">
+      <CoarNote v-if="error" variant="error" class="mb-3">{{ error }}</CoarNote>
 
-      <div class="flex gap-4">
-        <CoarFormField
-          label="Name"
-          hint="Lowercase letters, numbers, hyphens — used in URLs"
-          :disabled="!isCreate"
-          required
-          class="flex-1"
-        >
-          <CoarTextInput v-model="form.name" placeholder="my-product" clearable />
-        </CoarFormField>
-        <CoarFormField label="Visibility" class="visibility-select">
-          <CoarSelect v-model="form.visibility" :options="visibilityOptions" />
-        </CoarFormField>
-      </div>
+      <CoarTabGroup v-model="activeTab">
+        <CoarTab id="general">
+          General
+          <template #content>
+            <form class="tab-panel flex flex-col gap-4" @submit.prevent="save">
+              <div class="flex gap-4">
+                <CoarFormField
+                  label="Name"
+                  hint="Lowercase letters, numbers, hyphens — used in URLs"
+                  :disabled="!isCreate"
+                  required
+                  class="flex-1"
+                >
+                  <CoarTextInput v-model="form.name" placeholder="my-product" clearable />
+                </CoarFormField>
+                <CoarFormField label="Visibility" class="visibility-select">
+                  <CoarSelect v-model="form.visibility" :options="visibilityOptions" />
+                </CoarFormField>
+              </div>
 
-      <CoarFormField label="Display Name">
-        <CoarTextInput v-model="form.displayName" placeholder="My Product" clearable />
-      </CoarFormField>
+              <CoarFormField label="Display Name">
+                <CoarTextInput v-model="form.displayName" placeholder="My Product" clearable />
+              </CoarFormField>
 
-      <CoarFormField label="Description">
-        <CoarTextInput v-model="form.description" placeholder="Short description of this product" :rows="2" />
-      </CoarFormField>
+              <CoarFormField label="Description">
+                <CoarTextInput v-model="form.description" placeholder="Short description of this product" :rows="2" />
+              </CoarFormField>
 
-      <section>
-        <div class="section-heading">Tags</div>
-        <div class="tag-input-row">
-          <CoarTextInput
-            v-model="tagInput"
-            placeholder="Add tag…"
-            class="flex-1"
-            @keydown.enter.prevent="addTag"
-          />
-          <CoarButton variant="secondary" size="s" @click="addTag">Add</CoarButton>
-        </div>
-        <div v-if="form.tags.length > 0" class="tag-chips">
-          <span v-for="tag in form.tags" :key="tag" class="tag-chip">
-            {{ tag }}
-            <button class="tag-chip-remove" type="button" aria-label="Remove tag" @click="removeTag(tag)">×</button>
-          </span>
-        </div>
-      </section>
+              <CoarCheckbox
+                v-model="form.showWhenEmpty"
+                label="Show on landing page even without published versions"
+              />
+            </form>
+          </template>
+        </CoarTab>
 
-      <section>
-        <div class="section-heading">API Key</div>
-        <p class="section-desc">
-          Per-product upload key for CI/CD (<code>Authorization: Bearer</code>), valid only for
-          this product. Write-only — the value is never shown again.
-          <template v-if="hasApiKey">A key is currently set.</template>
-        </p>
-        <CoarFormField :label="hasApiKey ? 'Replace key' : 'Set key (optional)'">
-          <CoarTextInput v-model="newApiKey" placeholder="Leave empty to keep unchanged" clearable :disabled="removeApiKey" />
-        </CoarFormField>
-        <CoarCheckbox
-          v-if="hasApiKey"
-          v-model="removeApiKey"
-          label="Remove the existing key"
-          class="mt-2"
-        />
-      </section>
+        <CoarTab id="access">
+          Tags &amp; API
+          <template #content>
+            <div class="tab-panel flex flex-col gap-4">
+              <section>
+                <div class="section-heading">Tags</div>
+                <div class="tag-input-row">
+                  <CoarTextInput
+                    v-model="tagInput"
+                    placeholder="Add tag…"
+                    class="flex-1"
+                    @keydown.enter.prevent="addTag"
+                  />
+                  <CoarButton variant="secondary" size="s" @click="addTag">Add</CoarButton>
+                </div>
+                <div v-if="form.tags.length > 0" class="tag-chips">
+                  <span v-for="tag in form.tags" :key="tag" class="tag-chip">
+                    {{ tag }}
+                    <button class="tag-chip-remove" type="button" aria-label="Remove tag" @click="removeTag(tag)">×</button>
+                  </span>
+                </div>
+              </section>
 
-      <section>
-        <div class="section-heading">Options</div>
-        <CoarCheckbox
-          v-model="form.showWhenEmpty"
-          label="Show on landing page even without published versions"
-        />
-      </section>
-    </form>
+              <section>
+                <div class="section-heading">API Key</div>
+                <p class="section-desc">
+                  Per-product upload key for CI/CD (<code>Authorization: Bearer</code>), valid only for
+                  this product. Write-only — the value is never shown again.
+                  <template v-if="hasApiKey">A key is currently set.</template>
+                </p>
+                <CoarFormField :label="hasApiKey ? 'Replace key' : 'Set key (optional)'">
+                  <CoarTextInput v-model="newApiKey" placeholder="Leave empty to keep unchanged" clearable :disabled="removeApiKey" />
+                </CoarFormField>
+                <CoarCheckbox
+                  v-if="hasApiKey"
+                  v-model="removeApiKey"
+                  label="Remove the existing key"
+                  class="mt-2"
+                />
+              </section>
+            </div>
+          </template>
+        </CoarTab>
+
+        <CoarTab v-if="!isCreate" id="versions">
+          Versions
+          <template #content>
+            <div class="tab-panel flex flex-col gap-4">
+              <section>
+                <div class="section-heading">Upload Version</div>
+                <div class="upload-row">
+                  <CoarFormField label="Version" class="upload-version-input">
+                    <CoarTextInput v-model="uploadVersion" placeholder="v1.0.0" />
+                  </CoarFormField>
+                  <div class="file-field">
+                    <span class="file-label">ZIP File</span>
+                    <div class="file-picker">
+                      <CoarButton variant="secondary" size="s" @click="fileInput?.click()">Choose File…</CoarButton>
+                      <span class="file-name" :class="{ 'file-name--empty': !uploadFile }">
+                        {{ uploadFile?.name ?? 'No file selected' }}
+                      </span>
+                      <input ref="fileInput" type="file" accept=".zip" class="file-input-hidden" @change="onFileSelected" />
+                    </div>
+                  </div>
+                  <CoarButton
+                    variant="primary"
+                    size="s"
+                    class="upload-btn"
+                    :disabled="!uploadVersion || !uploadFile || uploading"
+                    :loading="uploading"
+                    @click="onUpload"
+                  >
+                    Upload
+                  </CoarButton>
+                </div>
+              </section>
+
+              <CoarNote v-if="versionsMessage" variant="success">{{ versionsMessage }}</CoarNote>
+              <CoarNote v-if="versionsError" variant="error">{{ versionsError }}</CoarNote>
+
+              <section>
+                <div class="section-heading">Existing Versions</div>
+                <CoarTable v-if="versions.length > 0" variant="plain" hover>
+                  <thead>
+                    <tr>
+                      <th>Version</th>
+                      <th>Status</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr v-for="v in versions" :key="v">
+                      <td>
+                        <a :href="`/${props.id}/${v}/`" target="_blank" class="version-link">{{ v }}</a>
+                      </td>
+                      <td>
+                        <CoarTag v-if="v === latest" variant="accent" size="s">latest</CoarTag>
+                      </td>
+                      <td class="cell-actions">
+                        <CoarButton
+                          variant="ghost"
+                          size="s"
+                          :loading="deletingVersion === v"
+                          @click="onDeleteVersion(v)"
+                        >
+                          Delete
+                        </CoarButton>
+                      </td>
+                    </tr>
+                  </tbody>
+                </CoarTable>
+                <p v-else class="section-desc">No versions deployed yet.</p>
+              </section>
+            </div>
+          </template>
+        </CoarTab>
+      </CoarTabGroup>
+    </div>
     <div v-else class="flex flex-1 items-center justify-center p-8">
       <span class="loading-text">Loading…</span>
     </div>
@@ -198,6 +350,11 @@ async function save() {
 </template>
 
 <style scoped>
+.tab-panel {
+  padding-top: 16px;
+  min-height: 22rem;
+}
+
 .visibility-select {
   width: 10rem;
 }
@@ -228,6 +385,7 @@ async function save() {
 }
 
 .mt-2 { margin-top: 8px; }
+.mb-3 { margin-bottom: 12px; }
 
 .tag-input-row {
   display: flex;
@@ -266,6 +424,65 @@ async function save() {
 }
 
 .tag-chip-remove:hover { opacity: 1; }
+
+.upload-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.upload-version-input {
+  width: 160px;
+}
+
+.file-field {
+  flex: 1;
+  min-width: 220px;
+}
+
+.file-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--coar-text-neutral-secondary);
+  margin-bottom: 6px;
+}
+
+.file-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.file-name {
+  font-size: 0.85rem;
+  color: var(--coar-text-neutral-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-name--empty {
+  color: var(--coar-text-neutral-tertiary);
+}
+
+.file-input-hidden {
+  display: none;
+}
+
+.upload-btn {
+  margin-bottom: 2px;
+}
+
+.version-link {
+  color: var(--coar-text-accent-primary);
+  text-decoration: none;
+  font-weight: 500;
+}
+.version-link:hover { text-decoration: underline; }
+
+.cell-actions { text-align: right; }
 
 .loading-text {
   color: var(--coar-text-neutral-tertiary);

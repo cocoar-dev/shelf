@@ -34,19 +34,6 @@ export const router = createRouter({
             ],
           },
         },
-        {
-          path: 'products/:name',
-          component: () => import('@/views/products/ProductDetailView.vue'),
-          meta: {
-            routedFragments: [
-              {
-                type: 'modal',
-                path: ':id',
-                component: () => import('@/views/products/ProductFormModal.vue'),
-              },
-            ],
-          },
-        },
         { path: 'profile', component: () => import('@/views/ProfileView.vue') },
         {
           path: 'analytics',
