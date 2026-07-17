@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import { CoarDataGrid, CoarGridBuilder } from '@cocoar/vue-data-grid';
-import { CoarContextMenu, CoarMenuItem, useContextMenu } from '@cocoar/vue-ui';
+import { CoarContextMenu, CoarMenuItem, useContextMenu, useDialog } from '@cocoar/vue-ui';
 import { http } from '@/core/api/http';
 
 // Users are thin local mirrors of modgud identities, JIT-created at first login — there is no
@@ -19,6 +19,7 @@ const users = ref<UserRow[]>([]);
 const selectedIds = ref<string[]>([]);
 const cellMenu = useContextMenu();
 const viewportMenu = useContextMenu();
+const dialog = useDialog();
 
 const builder = CoarGridBuilder.create<UserRow>()
   .persistColumnState('admin-users-v2')
@@ -63,7 +64,13 @@ async function toggleActive() {
 async function deleteUser() {
   const id = selectedIds.value[0];
   if (!id) return;
-  if (!confirm('Delete this user? It will be re-created on their next login.')) return;
+  const ok = await dialog.confirm({
+    title: 'Delete User',
+    message: 'Delete this user? The local mirror is re-created on their next login.',
+    confirmText: 'Delete',
+    confirmVariant: 'danger',
+  }).result;
+  if (!ok) return;
   await http.delete(`/users/${id}`);
   await loadUsers();
 }

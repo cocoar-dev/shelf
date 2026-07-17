@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { CoarDataGrid, CoarGridBuilder } from '@cocoar/vue-data-grid';
-import { CoarButton, CoarContextMenu, CoarMenuItem, CoarMenuDivider, useContextMenu } from '@cocoar/vue-ui';
+import { CoarButton, CoarContextMenu, CoarMenuItem, CoarMenuDivider, useContextMenu, useDialog } from '@cocoar/vue-ui';
 import { useFragmentNavigation, useRoutedModals } from '@cocoar/vue-fragment-parser';
 import { useUI } from '@/composables/useUI';
 import { useProductsStore } from '@/stores/products.store';
@@ -17,6 +17,7 @@ const productsStore = useProductsStore();
 const contextProduct = ref<Product | undefined>();
 const cellMenu = useContextMenu();
 const viewportMenu = useContextMenu();
+const dialog = useDialog();
 
 ui.set((ctx) => {
   ctx.header.title = 'Products';
@@ -60,7 +61,14 @@ const builder = CoarGridBuilder.create<Product>()
 
 async function deleteProduct() {
   const name = contextProduct.value?.name;
-  if (!name || !confirm(`Delete product "${name}"?`)) return;
+  if (!name) return;
+  const ok = await dialog.confirm({
+    title: 'Delete Product',
+    message: `Delete product "${name}"? Its registration is removed; deployed versions stay on disk until deleted separately.`,
+    confirmText: 'Delete',
+    confirmVariant: 'danger',
+  }).result;
+  if (!ok) return;
   await productsStore.remove(name);
 }
 

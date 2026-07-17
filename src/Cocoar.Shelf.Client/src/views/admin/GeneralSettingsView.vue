@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
-import { CoarCard, CoarButton, CoarTag, CoarNote, CoarFormField, CoarTextInput } from '@cocoar/vue-ui';
+import { CoarCard, CoarButton, CoarTag, CoarNote, CoarFormField, CoarTextInput, useDialog } from '@cocoar/vue-ui';
 import { http } from '@/core/api/http';
 import { generateApiKey, copyToClipboard } from '@/core/api-key-utils';
 import type { ShelfSettingsInfo } from '@/core/models/shelf.models';
 
+const dialog = useDialog();
 const settings = ref<ShelfSettingsInfo | null>(null);
 const newKey = ref('');
 const saving = ref(false);
@@ -47,7 +48,13 @@ async function saveKey() {
 }
 
 async function removeKey() {
-  if (!confirm('Remove the UI-managed master API key? CI pipelines using it will stop working.')) return;
+  const ok = await dialog.confirm({
+    title: 'Remove Master API Key',
+    message: 'Remove the UI-managed master API key? CI pipelines using it will stop working.',
+    confirmText: 'Remove',
+    confirmVariant: 'danger',
+  }).result;
+  if (!ok) return;
   message.value = '';
   error.value = '';
   saving.value = true;

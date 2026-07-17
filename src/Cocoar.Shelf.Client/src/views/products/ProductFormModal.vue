@@ -2,7 +2,7 @@
 import { ref, computed, onMounted } from 'vue';
 import {
   CoarTextInput, CoarSelect, CoarCheckbox, CoarNote, CoarButton, CoarFormField,
-  CoarTabGroup, CoarTab, CoarTable, CoarTag,
+  CoarTabGroup, CoarTab, CoarTable, CoarTag, useDialog,
 } from '@cocoar/vue-ui';
 import ModalLayout from '@/components/ModalLayout.vue';
 import { useProductsStore } from '@/stores/products.store';
@@ -16,6 +16,7 @@ const props = defineProps<{
 }>();
 
 const productsStore = useProductsStore();
+const dialog = useDialog();
 const isCreate = computed(() => props.id === 'create');
 const loading = ref(false);
 const saving = ref(false);
@@ -181,7 +182,13 @@ async function onUpload() {
 }
 
 async function onDeleteVersion(version: string) {
-  if (!confirm(`Delete version ${version}? This cannot be undone.`)) return;
+  const ok = await dialog.confirm({
+    title: 'Delete Version',
+    message: `Delete version ${version} of ${props.id}? The deployed files are removed — this cannot be undone.`,
+    confirmText: 'Delete',
+    confirmVariant: 'danger',
+  }).result;
+  if (!ok) return;
   deletingVersion.value = version;
   versionsError.value = '';
   versionsMessage.value = '';
