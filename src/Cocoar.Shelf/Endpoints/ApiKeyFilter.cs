@@ -1,9 +1,11 @@
+using Cocoar.Shelf.Services;
+
 namespace Cocoar.Shelf.Endpoints;
 
 /// <summary>
 /// Endpoint filter that accepts authentication via either:
 /// - Cookie session (from Admin UI / browser)
-/// - Bearer API key (from CI/CD pipelines)
+/// - Bearer API key: per-product key (from ProductConfig.ApiKey) or global key (from ShelfOptions.ApiKey)
 /// </summary>
 public partial class ApiKeyFilter(ILogger<ApiKeyFilter> logger) : IEndpointFilter
 {
@@ -13,7 +15,35 @@ public partial class ApiKeyFilter(ILogger<ApiKeyFilter> logger) : IEndpointFilte
         if (context.HttpContext.User.Identity?.IsAuthenticated == true)
             return await next(context);
 
-        // Accept Bearer API key (CI/CD)
+        // Extract Bearer token
+        var auth = context.HttpContext.Request.Headers.Authorization.ToString();
+
+        if (!auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            LogUnauthorized(logger);
+            return Results.Json(new { error = "Authentication required" }, statusCode: 401);
+        }
+
+        var provided = auth["Bearer ".Length..].Trim();
+
+        if (string.IsNullOrEmpty(provided))
+        {
+            LogUnauthorized(logger);
+            return Results.Json(new { error = "Authentication required" }, statusCode: 401);
+        }
+
+        // Check per-product API key (if request targets a specific product)
+        var product = context.HttpContext.Request.RouteValues["product"] as string;
+        if (!string.IsNullOrEmpty(product))
+        {
+            var configService = context.HttpContext.RequestServices.GetService<IProductConfigService>();
+            var productConfig = configService?.GetConfig(product);
+
+            if (productConfig?.ApiKey != null && productConfig.ApiKey == provided)
+                return await next(context);
+        }
+
+        // Fallback: check global API key
         ShelfOptions options;
         try
         {
@@ -25,40 +55,19 @@ public partial class ApiKeyFilter(ILogger<ApiKeyFilter> logger) : IEndpointFilte
             return Results.Json(new { error = "Server configuration error" }, statusCode: 500);
         }
 
-        if (string.IsNullOrEmpty(options.ApiKey))
-        {
-            LogNoApiKeyConfigured(logger);
-            return Results.Json(new { error = "Upload is disabled (no API key configured)" }, statusCode: 503);
-        }
+        if (!string.IsNullOrEmpty(options.ApiKey) && provided == options.ApiKey)
+            return await next(context);
 
-        var auth = context.HttpContext.Request.Headers.Authorization.ToString();
-
-        if (!auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
-        {
-            LogUnauthorized(logger);
-            return Results.Json(new { error = "Authentication required" }, statusCode: 401);
-        }
-
-        var provided = auth["Bearer ".Length..];
-
-        if (provided != options.ApiKey)
-        {
-            LogInvalidApiKey(logger);
-            return Results.Json(new { error = "Invalid API key" }, statusCode: 401);
-        }
-
-        return await next(context);
+        LogInvalidApiKey(logger);
+        return Results.Json(new { error = "Invalid API key" }, statusCode: 401);
     }
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to resolve ShelfOptions — configuration may be invalid")]
     private static partial void LogConfigResolutionFailed(ILogger logger, Exception ex);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Upload rejected: no API key configured")]
-    private static partial void LogNoApiKeyConfigured(ILogger logger);
-
     [LoggerMessage(Level = LogLevel.Warning, Message = "Authentication required: no cookie or Bearer token")]
     private static partial void LogUnauthorized(ILogger logger);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Upload rejected: invalid API key")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid API key")]
     private static partial void LogInvalidApiKey(ILogger logger);
 }

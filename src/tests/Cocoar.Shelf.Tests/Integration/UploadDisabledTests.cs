@@ -48,7 +48,7 @@ public class UploadDisabledTests
     }
 
     [Fact]
-    public async Task Upload_Returns503_WhenApiKeyNotConfigured()
+    public async Task Upload_Returns401_WhenApiKeyNotConfigured()
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "/_api/products/disabled-test/versions/v1")
         {
@@ -58,9 +58,7 @@ public class UploadDisabledTests
 
         var response = await _client.SendAsync(request);
 
-        Assert.Equal(HttpStatusCode.ServiceUnavailable, response.StatusCode);
-        var json = await response.Content.ReadAsStringAsync();
-        Assert.Contains("disabled", json);
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Fact]

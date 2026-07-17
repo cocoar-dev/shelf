@@ -9,12 +9,12 @@ namespace Cocoar.Shelf.Tests;
 public sealed class ApiKeyFilterTests
 {
     [Fact]
-    public async Task Returns503_WhenApiKeyIsEmpty()
+    public async Task Returns401_WhenApiKeyIsEmpty()
     {
         var result = await InvokeFilter(apiKey: "", authHeader: null);
         var statusCode = await GetStatusCode(result);
 
-        Assert.Equal(503, statusCode);
+        Assert.Equal(401, statusCode);
     }
 
     [Fact]

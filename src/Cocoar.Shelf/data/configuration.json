@@ -5,6 +5,25 @@
   "PathBase": "",
   "ApiKey": "dev-key",
   "MaxUploadSizeBytes": 104857600,
+  "Database": {
+    "ConnectionString": "Host=localhost;Port=5432;Database=shelf;Username=postgres;Password=postgres"
+  },
+  "Email": {
+    "Provider": "logging",
+    "Smtp": {
+      "Host": "localhost",
+      "Port": 2525,
+      "FromAddress": "noreply@shelf.local"
+    },
+    "Postmark": {
+      "ServerToken": "",
+      "FromAddress": ""
+    }
+  },
+  "AccessLog": {
+    "Enabled": false,
+    "RetentionDays": 90
+  },
   "Logging": {
     "LogLevels": {
       "Default": "Information",

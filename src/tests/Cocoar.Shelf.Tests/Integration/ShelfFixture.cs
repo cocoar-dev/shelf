@@ -21,10 +21,11 @@ public class ShelfFixture : WebApplicationFactory<Program>, IAsyncLifetime
         Directory.CreateDirectory(DocsRoot);
         Directory.CreateDirectory(Path.Combine(ConfigRoot, "products"));
 
-        // Set env vars that FromEnvironment("Shelf__") picks up (overrides appsettings.json)
+        // Set env vars that FromEnvironment("Shelf__") picks up (overrides configuration.json)
         Environment.SetEnvironmentVariable("Shelf__DocsRoot", DocsRoot);
         Environment.SetEnvironmentVariable("Shelf__ConfigRoot", ConfigRoot);
         Environment.SetEnvironmentVariable("Shelf__ApiKey", ApiKey);
+        Environment.SetEnvironmentVariable("Shelf__Database__ConnectionString", "");
 
         return Task.CompletedTask;
     }
@@ -36,6 +37,7 @@ public class ShelfFixture : WebApplicationFactory<Program>, IAsyncLifetime
         Environment.SetEnvironmentVariable("Shelf__DocsRoot", null);
         Environment.SetEnvironmentVariable("Shelf__ConfigRoot", null);
         Environment.SetEnvironmentVariable("Shelf__ApiKey", null);
+        Environment.SetEnvironmentVariable("Shelf__Database__ConnectionString", null);
 
         try
         {

@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Cocoar.Shelf.Models;
 using Cocoar.Shelf.Services;
+using Marten;
 using Microsoft.AspNetCore.Http.Features;
 
 namespace Cocoar.Shelf.Endpoints;
@@ -14,14 +15,29 @@ public static partial class ApiEndpoints
     {
         var api = app.MapGroup("/_api");
 
-        // Auth endpoints (cookie-based)
-        api.MapAuthEndpoints();
+        var hasDatabase = app.Services.GetService<IDocumentStore>() != null;
+
+        // Auth endpoints
+        if (hasDatabase)
+        {
+            api.MapAuthEndpoints();
+            api.MapSetupEndpoints();
+            api.MapMfaEndpoints();
+            api.MapEmailOtpEndpoints();
+            api.MapMagicLinkEndpoints();
+            api.MapPasskeyEndpoints();
+            api.MapUserEndpoints();
+        }
 
         // Public read endpoints
         api.MapGet("/products", GetProducts);
         api.MapGet("/products/{product}", GetProduct);
         api.MapGet("/products/{product}/versions", GetVersions);
         api.MapGet("/shelf-config", GetShelfConfig);
+
+        // Analytics endpoints (only when Marten is configured)
+        if (hasDatabase)
+            api.MapAnalyticsEndpoints();
 
         // Protected write endpoints (cookie or Bearer API key)
         api.MapPost("/products", CreateProduct)
@@ -58,6 +74,7 @@ public static partial class ApiEndpoints
                     config.Visibility,
                     config.Tags,
                     config.ShowWhenEmpty,
+                    HasApiKey = !string.IsNullOrEmpty(config.ApiKey),
                     Latest = manifest?.Latest,
                     Versions = manifest?.Versions ?? (IReadOnlyList<string>)[]
                 };
@@ -130,6 +147,7 @@ public static partial class ApiEndpoints
                 config.Visibility,
                 config.Tags,
                 config.ShowWhenEmpty,
+                HasApiKey = !string.IsNullOrEmpty(config.ApiKey),
                 Latest = manifest?.Latest,
                 Versions = manifest?.Versions ?? (IReadOnlyList<string>)[]
             });
@@ -298,7 +316,8 @@ public static partial class ApiEndpoints
                 Source = request.Source ?? "upload",
                 Visibility = request.Visibility ?? "public",
                 Tags = NormalizeTags(request.Tags),
-                ShowWhenEmpty = request.ShowWhenEmpty ?? false
+                ShowWhenEmpty = request.ShowWhenEmpty ?? false,
+                ApiKey = request.ApiKey
             };
 
             await configService.CreateAsync(config);
@@ -336,7 +355,8 @@ public static partial class ApiEndpoints
                 Source = request.Source ?? existing.Source,
                 Visibility = request.Visibility ?? existing.Visibility,
                 Tags = request.Tags != null ? NormalizeTags(request.Tags) : existing.Tags,
-                ShowWhenEmpty = request.ShowWhenEmpty ?? existing.ShowWhenEmpty
+                ShowWhenEmpty = request.ShowWhenEmpty ?? existing.ShowWhenEmpty,
+                ApiKey = request.ApiKey ?? existing.ApiKey
             };
 
             await configService.UpdateAsync(config);

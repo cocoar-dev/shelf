@@ -8,6 +8,12 @@
     <!-- Runtime -->
     <PackageVersion Include="Cocoar.Configuration.AspNetCore" Version="5.0.0-beta.2" />
     <PackageVersion Include="Cocoar.FileSystem" Version="2.2.0" />
+    <PackageVersion Include="Fido2.AspNet" Version="4.0.1" />
+    <PackageVersion Include="MailKit" Version="4.15.1" />
+    <PackageVersion Include="Marten" Version="8.29.3" />
+    <PackageVersion Include="Postmark" Version="5.3.0" />
+    <PackageVersion Include="MaxMind.GeoIP2" Version="5.4.1" />
+    <PackageVersion Include="Microsoft.Extensions.Identity.Stores" Version="10.0.5" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
   </ItemGroup>
 

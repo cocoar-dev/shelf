@@ -53,6 +53,7 @@ const totalVersions = computed(() =>
 ui.set(ctx => {
   ctx.header.title = 'Dashboard';
   ctx.header.subTitle = 'Overview of your documentation hosting';
+  ctx.header.icon = 'layout-dashboard';
 });
 
 onMounted(async () => {

@@ -2,17 +2,19 @@ namespace Cocoar.Shelf.Models;
 
 public class ProductConfig
 {
-    public required string Name { get; init; }
+    public required string Name { get; set; }
 
-    public string? DisplayName { get; init; }
+    public string? DisplayName { get; set; }
 
-    public string? Description { get; init; }
+    public string? Description { get; set; }
 
-    public string Source { get; init; } = "upload";
+    public string Source { get; set; } = "upload";
 
-    public string Visibility { get; init; } = "public";
+    public string Visibility { get; set; } = "public";
 
-    public IReadOnlyList<string> Tags { get; init; } = [];
+    public IReadOnlyList<string> Tags { get; set; } = [];
 
-    public bool ShowWhenEmpty { get; init; } = false;
+    public bool ShowWhenEmpty { get; set; }
+
+    public string? ApiKey { get; set; }
 }

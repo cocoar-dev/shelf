@@ -1,246 +1,253 @@
-<template>
-  <div class="layout">
-    <aside class="sidebar">
-      <div class="sidebar-brand">
-        <span class="brand-text">Shelf</span>
-        <span class="brand-sub">Admin</span>
-      </div>
-
-      <nav class="sidebar-nav">
-        <RouterLink to="/admin" class="nav-item" exact-active-class="nav-item--active">
-          <CoarIcon name="layout-dashboard" :size="18" />
-          <span>Dashboard</span>
-        </RouterLink>
-        <RouterLink to="/admin/products" class="nav-item" active-class="nav-item--active">
-          <CoarIcon name="package" :size="18" />
-          <span>Products</span>
-        </RouterLink>
-      </nav>
-
-      <div class="sidebar-footer">
-        <button class="nav-item" @click="onLogout">
-          <CoarIcon name="log-out" :size="18" />
-          <span>Sign Out</span>
-        </button>
-      </div>
-    </aside>
-
-    <div class="main-wrapper">
-      <header v-if="ui.state.header.show" class="main-header">
-        <div>
-          <h1 class="header-title">{{ ui.state.header.title }}</h1>
-          <p v-if="ui.state.header.subTitle" class="header-subtitle">{{ ui.state.header.subTitle }}</p>
-        </div>
-      </header>
-
-      <div v-if="ui.state.content.showLoadingBar" class="loading-bar" />
-
-      <main class="main-content" :class="{ 'main-content--scrollable': ui.state.content.scrollable }">
-        <div v-if="ui.state.content.container" class="content-container" :class="{ 'content-container--padded': ui.state.content.padding }">
-          <RouterView />
-        </div>
-        <RouterView v-else />
-      </main>
-
-      <footer v-if="ui.state.footer.show" class="main-footer">
-        <div class="footer-actions">
-          <CoarButton
-            v-if="ui.state.footer.button1.visible"
-            variant="secondary"
-            :disabled="ui.state.footer.button1.disabled"
-            :loading="ui.state.footer.button1.loading"
-            @click="ui.state.footer.button1.onClick?.()"
-          >
-            {{ ui.state.footer.button1.text || 'Back' }}
-          </CoarButton>
-          <div class="footer-spacer" />
-          <CoarButton
-            v-if="ui.state.footer.button2.visible"
-            variant="danger"
-            :disabled="ui.state.footer.button2.disabled"
-            :loading="ui.state.footer.button2.loading"
-            @click="ui.state.footer.button2.onClick?.()"
-          >
-            {{ ui.state.footer.button2.text || 'Delete' }}
-          </CoarButton>
-          <CoarButton
-            v-if="ui.state.footer.button3.visible"
-            variant="primary"
-            :disabled="ui.state.footer.button3.disabled"
-            :loading="ui.state.footer.button3.loading"
-            @click="ui.state.footer.button3.onClick?.()"
-          >
-            {{ ui.state.footer.button3.text || 'Save' }}
-          </CoarButton>
-        </div>
-      </footer>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
-import { useRouter } from 'vue-router';
-import { CoarButton, CoarIcon } from '@cocoar/vue-ui';
-import { useUI } from '@/composables/useUI';
+import { computed, ref } from 'vue';
+import { useRouter, useRoute, RouterView } from 'vue-router';
+import {
+  CoarIcon,
+  CoarButton,
+  CoarContextMenu,
+  CoarMenuItem,
+  CoarMenuDivider,
+  CoarSidebar,
+  CoarSidebarItem,
+  CoarSidebarDivider,
+  CoarSidebarSpacer,
+  useContextMenu,
+} from '@cocoar/vue-ui';
+import { provideUI } from '@/composables/useUI';
 import { useAuthStore } from '@/stores/auth.store';
 
 const router = useRouter();
-const ui = useUI();
-const auth = useAuthStore();
+const route = useRoute();
+const { state: ui } = provideUI();
+const authStore = useAuthStore();
 
-async function onLogout() {
-  await auth.logout();
+const collapsed = ref(
+  localStorage.getItem('sidebar-collapsed') === 'true',
+);
+
+function toggleCollapsed() {
+  collapsed.value = !collapsed.value;
+  localStorage.setItem('sidebar-collapsed', String(collapsed.value));
+}
+
+const darkMode = ref(localStorage.getItem('dark-mode') === 'true');
+
+function toggleDarkMode() {
+  darkMode.value = !darkMode.value;
+  localStorage.setItem('dark-mode', String(darkMode.value));
+  document.documentElement.classList.toggle('dark-mode', darkMode.value);
+}
+
+const userInitials = computed(() => {
+  const name = authStore.userName;
+  if (!name) return '??';
+  return name.substring(0, 2).toUpperCase();
+});
+
+const userMenu = useContextMenu();
+
+function openUserMenu(event: MouseEvent) {
+  const btn = event.currentTarget as HTMLElement;
+  const rect = btn.getBoundingClientRect();
+  userMenu.open({ clientX: rect.right, clientY: rect.bottom + 4 } as MouseEvent);
+}
+
+async function logout() {
+  await authStore.logout();
   router.push('/login');
 }
 </script>
 
+<template>
+  <div class="flex h-screen flex-col">
+    <!-- Header -->
+    <header v-if="ui.header.show" class="main-header">
+      <button class="header-logo" :style="{ width: collapsed ? '4rem' : '16rem' }" @click="router.push('/')">
+        <CoarIcon name="book-open" />
+        <span v-if="!collapsed" class="text-sm font-medium tracking-wide opacity-80">Shelf</span>
+      </button>
+
+      <div class="header-content">
+        <CoarIcon v-if="ui.header.icon" :name="ui.header.icon" class="header-icon" />
+        <div class="flex flex-col justify-center" style="line-height: 1.5em">
+          <div class="title" :class="{ 'title-only': !ui.header.subTitle }">
+            {{ ui.header.title }}
+          </div>
+          <div v-if="ui.header.subTitle" class="subtitle">
+            {{ ui.header.subTitle }}
+          </div>
+        </div>
+        <div class="flex-1" />
+
+        <!-- Dark mode toggle -->
+        <button
+          class="ml-2 flex h-9 w-9 items-center justify-center rounded-full text-white/70 transition hover:bg-white/20"
+          title="Toggle dark mode"
+          @click="toggleDarkMode"
+        >
+          <CoarIcon :name="darkMode ? 'sun' : 'moon'" />
+        </button>
+
+        <!-- User Avatar -->
+        <button
+          class="ml-2 flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white transition hover:bg-white/30"
+          :title="authStore.userName ?? ''" @click="openUserMenu"
+        >
+          {{ userInitials }}
+        </button>
+      </div>
+    </header>
+
+    <!-- User Menu -->
+    <CoarContextMenu :menu="userMenu">
+      <CoarMenuItem :label="authStore.userName ?? 'User'" icon="user" @clicked="router.push('/admin/profile')" />
+      <CoarMenuDivider />
+      <CoarMenuItem label="Profile & Security" icon="circle-user" @clicked="router.push('/admin/profile')" />
+      <CoarMenuItem label="Sign Out" icon="log-out" @clicked="logout" />
+    </CoarContextMenu>
+
+    <!-- Body -->
+    <div class="flex flex-1 overflow-hidden">
+      <CoarSidebar v-model:collapsed="collapsed" elevated class="z-10">
+        <CoarSidebarSpacer height="4px" />
+        <CoarSidebarItem
+          icon="layout-dashboard"
+          label="Dashboard"
+          :active="route.path === '/admin' || route.path === '/admin/'"
+          @click="router.push('/admin')"
+        />
+        <CoarSidebarItem
+          icon="book-open"
+          label="Products"
+          :active="route.path.startsWith('/admin/products')"
+          @click="router.push('/admin/products')"
+        />
+        <CoarSidebarItem
+          icon="bar-chart-3"
+          label="Analytics"
+          :active="route.path.startsWith('/admin/analytics')"
+          @click="router.push('/admin/analytics')"
+        />
+        <CoarSidebarItem
+          icon="cog"
+          label="Administration"
+          :active="route.path.startsWith('/admin/settings')"
+          @click="router.push('/admin/settings')"
+        />
+
+        <CoarSidebarSpacer grow />
+
+        <template #footer="{ collapsed: c }">
+          <CoarSidebarDivider />
+          <CoarSidebarItem
+            :icon="c ? 'chevron-right' : 'chevron-left'"
+            :label="c ? 'Expand' : 'Collapse'"
+            @click="toggleCollapsed"
+          />
+        </template>
+      </CoarSidebar>
+
+      <div class="flex flex-1 flex-col overflow-hidden">
+        <main class="flex flex-1" :style="{ overflow: ui.content.container ? 'auto' : 'hidden' }">
+          <div class="main-container flex" :class="ui.content.container ? 'container-mode' : 'flex-1'">
+            <RouterView />
+          </div>
+        </main>
+
+        <footer v-if="ui.footer.show" class="main-footer">
+          <div v-if="ui.content.hasSubNav" class="sub-nav-spacer" />
+          <div class="flex flex-1 justify-center min-w-0">
+            <div class="flex items-center w-11/12">
+              <div class="flex-1" />
+              <div class="flex items-center gap-2">
+                <CoarButton v-if="ui.footer.button3.visible" variant="ghost" size="s"
+                  :disabled="ui.footer.button3.disabled" :loading="ui.footer.button3.loading"
+                  @click="ui.footer.button3.onClick?.()">{{ ui.footer.button3.text }}</CoarButton>
+                <CoarButton v-if="ui.footer.button2.visible" variant="secondary" size="s"
+                  :disabled="ui.footer.button2.disabled" :loading="ui.footer.button2.loading"
+                  @click="ui.footer.button2.onClick?.()">{{ ui.footer.button2.text }}</CoarButton>
+                <CoarButton v-if="ui.footer.button1.visible" variant="primary" size="s"
+                  :disabled="ui.footer.button1.disabled" :loading="ui.footer.button1.loading"
+                  @click="ui.footer.button1.onClick?.()">{{ ui.footer.button1.text }}</CoarButton>
+              </div>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </div>
+  </div>
+</template>
+
 <style scoped>
-.layout {
+.main-header {
+  min-height: 64px;
+  max-height: 64px;
+  background-color: var(--color-header);
+  color: white;
   display: flex;
-  height: 100vh;
-  overflow: hidden;
+  flex-direction: row;
+  box-shadow: 0px 2px 6px #00152959;
+  position: relative;
+  z-index: 30;
 }
 
-.sidebar {
-  width: 240px;
-  min-width: 240px;
-  background: var(--coar-background-neutral-primary);
-  border-right: 1px solid var(--coar-border-neutral-tertiary);
-  display: flex;
-  flex-direction: column;
-}
-
-.sidebar-brand {
-  padding: 20px 20px 16px;
-  border-bottom: 1px solid var(--coar-border-neutral-tertiary);
-  display: flex;
-  align-items: baseline;
-  gap: 6px;
-}
-
-.brand-text {
-  font-size: 1.25rem;
-  font-weight: 700;
-  color: var(--coar-text-accent-primary);
-}
-
-.brand-sub {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: var(--coar-text-neutral-secondary);
-}
-
-.sidebar-nav {
-  flex: 1;
-  padding: 12px 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.sidebar-footer {
-  padding: 8px;
-  border-top: 1px solid var(--coar-border-neutral-tertiary);
-}
-
-.nav-item {
+.header-logo {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 6px;
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--coar-text-neutral-secondary);
-  text-decoration: none;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  color: white;
+  transition: width 0.2s ease;
   border: none;
   background: none;
   cursor: pointer;
-  width: 100%;
-  transition: background 0.15s, color 0.15s;
 }
 
-.nav-item:hover {
-  background: var(--coar-background-neutral-secondary);
-  color: var(--coar-text-neutral-primary);
-}
-
-.nav-item--active {
-  background: var(--coar-background-accent-tertiary);
-  color: var(--coar-text-accent-primary);
-}
-
-.main-wrapper {
-  flex: 1;
+.header-content {
   display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.main-header {
-  padding: 20px 32px;
-  border-bottom: 1px solid var(--coar-border-neutral-tertiary);
-  background: var(--coar-background-neutral-primary);
-}
-
-.header-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: var(--coar-text-neutral-primary);
-  margin: 0;
-}
-
-.header-subtitle {
-  font-size: 0.85rem;
-  color: var(--coar-text-neutral-secondary);
-  margin: 4px 0 0;
-}
-
-.loading-bar {
-  height: 3px;
-  background: var(--coar-text-accent-primary);
-  animation: loading 1.5s infinite ease-in-out;
-}
-
-@keyframes loading {
-  0% { transform: scaleX(0); transform-origin: left; }
-  50% { transform: scaleX(1); transform-origin: left; }
-  51% { transform-origin: right; }
-  100% { transform: scaleX(0); transform-origin: right; }
-}
-
-.main-content {
+  align-items: center;
   flex: 1;
-  overflow: hidden;
+  max-width: 100%;
+  padding: 0 1.5rem;
 }
 
-.main-content--scrollable {
-  overflow-y: auto;
+.header-icon {
+  font-size: xx-large;
+  width: 52px;
+  text-align: left;
 }
 
-.content-container {
-  max-width: 1100px;
-  margin: 0 auto;
-  width: 90%;
+.title {
+  font-size: 1.5em;
+  font-weight: bold;
 }
 
-.content-container--padded {
-  padding: 32px 0;
+.title.title-only {
+  font-size: 2em;
+}
+
+.subtitle {
+  font-size: 0.9em;
 }
 
 .main-footer {
-  padding: 12px 32px;
-  border-top: 1px solid var(--coar-border-neutral-tertiary);
-  background: var(--coar-background-neutral-primary);
-}
-
-.footer-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  background: var(--coar-background-neutral-secondary, #f7f7f7);
+  border-top: 1px solid #e9e9e9;
+  padding: 12px 8px;
 }
 
-.footer-spacer {
-  flex: 1;
+.sub-nav-spacer {
+  width: 13rem;
+  flex-shrink: 0;
+}
+
+.container-mode {
+  max-width: 100%;
+  width: 90%;
+  margin-left: auto;
+  margin-right: auto;
 }
 </style>
