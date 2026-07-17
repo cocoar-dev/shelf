@@ -17,26 +17,6 @@ export const router = createRouter({
       meta: { public: true },
     },
     {
-      path: '/setup',
-      component: () => import('@/views/SetupView.vue'),
-      meta: { public: true },
-    },
-    {
-      path: '/magic-login',
-      component: () => import('@/views/MagicLoginView.vue'),
-      meta: { public: true },
-    },
-    {
-      path: '/forgot-password',
-      component: () => import('@/views/ForgotPasswordView.vue'),
-      meta: { public: true },
-    },
-    {
-      path: '/reset-password',
-      component: () => import('@/views/ResetPasswordView.vue'),
-      meta: { public: true },
-    },
-    {
       path: '/admin',
       component: () => import('@/layouts/AdminLayout.vue'),
       children: [
@@ -50,6 +30,7 @@ export const router = createRouter({
         {
           path: 'settings',
           component: () => import('@/views/admin/AdminSettingsView.vue'),
+          meta: { admin: true },
           children: [
             { path: '', redirect: '/admin/settings/users' },
             { path: 'users', component: () => import('@/views/admin/UserListView.vue') },
@@ -67,16 +48,6 @@ router.beforeEach(async (to) => {
 
   if (!sessionChecked) {
     sessionChecked = true;
-
-    try {
-      const status = await auth.fetchSetupStatus();
-      if (status.needsSetup && to.path !== '/setup') {
-        return '/setup';
-      }
-    } catch {
-      // No DB configured, setup endpoint not available
-    }
-
     await auth.checkSession();
   }
 
@@ -84,6 +55,10 @@ router.beforeEach(async (to) => {
     return '/login';
   }
   if (to.path === '/login' && auth.isAuthenticated) {
+    return '/admin';
+  }
+  // The server is the real gate (Admin policy); this only spares non-admins a broken page.
+  if (to.matched.some(r => r.meta.admin) && !auth.user?.isAdmin) {
     return '/admin';
   }
 });

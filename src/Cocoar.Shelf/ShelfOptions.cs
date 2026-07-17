@@ -22,11 +22,15 @@ public class ShelfOptions
 
     public DatabaseOptions Database { get; set; } = new();
 
-    public EmailOptions Email { get; set; } = new();
+    public ModgudOptions Modgud { get; set; } = new();
 
     public AccessLogOptions AccessLog { get; set; } = new();
 
     public ShelfLogging Logging { get; set; } = new();
+
+    /// <summary>Maps the test-only sign-in seam (<c>/_api/test/signin</c>). Set ONLY by the
+    /// integration test fixture — never in dev-default or production.</summary>
+    public bool TestAuth { get; set; }
 }
 
 public class DatabaseOptions
@@ -34,41 +38,36 @@ public class DatabaseOptions
     public string? ConnectionString { get; set; }
 }
 
-public class EmailOptions
+/// <summary>
+/// Federation to the modgud identity provider. Login is brokered server-to-server (native OTP
+/// grant); modgud owns all credentials, Shelf keeps only a thin local user layer.
+/// </summary>
+public class ModgudOptions
 {
-    public string Provider { get; set; } = "logging"; // "logging", "smtp", "postmark"
+    /// <summary>Realm host root (no realm path segment — modgud routes by Host header). Also the
+    /// JWKS authority and base for <c>/connect/token</c> + <c>/connect/userinfo</c>.</summary>
+    public string Issuer { get; set; } = "https://auth.cocoar.dev";
 
-    public SmtpOptions Smtp { get; set; } = new();
+    /// <summary>The registered OAuth API name == the <c>resource_access</c> key carrying Shelf's
+    /// roles/permissions.</summary>
+    public string Audience { get; set; } = "shelf";
 
-    public PostmarkOptions Postmark { get; set; } = new();
-}
+    /// <summary>App subdomain the native OTP request goes to, so modgud host-resolves the Shelf
+    /// Application + its self-registration posture. Unset = use <see cref="Issuer"/> (dev).</summary>
+    public string? AuthBase { get; set; }
 
-public class SmtpOptions
-{
-    public string Host { get; set; } = "localhost";
+    /// <summary>Confidential OIDC client for the BFF login broker.</summary>
+    public string? WebClientId { get; set; }
 
-    public int Port { get; set; } = 25;
+    /// <summary>Secret for <see cref="WebClientId"/> — env/user-secrets only, never in files.</summary>
+    public string? WebClientSecret { get; set; }
 
-    public bool UseSsl { get; set; }
+    /// <summary>Permission that makes a principal admin (from modgud's shelf App catalog).</summary>
+    public string AdminPermission { get; set; } = "shelf:admin";
 
-    public string? UserName { get; set; }
-
-    public string? Password { get; set; }
-
-    public string FromAddress { get; set; } = "noreply@shelf.local";
-
-    public string? FromName { get; set; }
-}
-
-public class PostmarkOptions
-{
-    public string ServerToken { get; set; } = "";
-
-    public string FromAddress { get; set; } = "";
-
-    public string? FromName { get; set; }
-
-    public string? MessageStream { get; set; }
+    /// <summary>Email allowlist that is always admin — the no-lockout floor before modgud RBAC is
+    /// seeded.</summary>
+    public string[] Admins { get; set; } = [];
 }
 
 public class AccessLogOptions

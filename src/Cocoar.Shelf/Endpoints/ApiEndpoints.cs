@@ -1,7 +1,6 @@
 using System.Text.RegularExpressions;
 using Cocoar.Shelf.Models;
 using Cocoar.Shelf.Services;
-using Marten;
 using Microsoft.AspNetCore.Http.Features;
 
 namespace Cocoar.Shelf.Endpoints;
@@ -11,23 +10,17 @@ public static partial class ApiEndpoints
     private static readonly Regex ProductNameRegex = new("^[a-z0-9][a-z0-9-]*$", RegexOptions.Compiled);
     private static readonly HashSet<string> ReservedNames = new(StringComparer.OrdinalIgnoreCase) { "admin", "api" };
 
-    public static WebApplication MapApiEndpoints(this WebApplication app)
+    public static WebApplication MapApiEndpoints(this WebApplication app, ShelfOptions options)
     {
         var api = app.MapGroup("/_api");
 
-        var hasDatabase = app.Services.GetService<IDocumentStore>() != null;
+        // Auth (modgud-brokered login + thin local user layer)
+        api.MapAuthEndpoints();
+        api.MapUserEndpoints();
 
-        // Auth endpoints
-        if (hasDatabase)
-        {
-            api.MapAuthEndpoints();
-            api.MapSetupEndpoints();
-            api.MapMfaEndpoints();
-            api.MapEmailOtpEndpoints();
-            api.MapMagicLinkEndpoints();
-            api.MapPasskeyEndpoints();
-            api.MapUserEndpoints();
-        }
+        // Test-only sign-in seam — mapped exclusively for the integration test host.
+        if (options.TestAuth)
+            api.MapTestAuthEndpoints();
 
         // Public read endpoints
         api.MapGet("/products", GetProducts);
@@ -35,9 +28,7 @@ public static partial class ApiEndpoints
         api.MapGet("/products/{product}/versions", GetVersions);
         api.MapGet("/shelf-config", GetShelfConfig);
 
-        // Analytics endpoints (only when Marten is configured)
-        if (hasDatabase)
-            api.MapAnalyticsEndpoints();
+        api.MapAnalyticsEndpoints();
 
         // Protected write endpoints (cookie or Bearer API key)
         api.MapPost("/products", CreateProduct)

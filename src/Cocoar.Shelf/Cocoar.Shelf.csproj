@@ -7,10 +7,7 @@
   <ItemGroup>
     <PackageReference Include="Cocoar.Configuration.AspNetCore" />
     <PackageReference Include="Cocoar.FileSystem" />
-    <PackageReference Include="Fido2.AspNet" />
-    <PackageReference Include="MailKit" />
     <PackageReference Include="Marten" />
-    <PackageReference Include="Postmark" />
     <PackageReference Include="MaxMind.GeoIP2" />
     <PackageReference Include="Serilog.AspNetCore" />
   </ItemGroup>

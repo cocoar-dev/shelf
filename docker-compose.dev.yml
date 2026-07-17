@@ -1,0 +1,51 @@
+# Local development stack for the shelf ↔ modgud federation. Brings up a real modgud IdP
+# (published :beta = develop HEAD) so the federated email-code login can be tested end-to-end
+# on localhost.
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#
+# Postgres is NOT in this stack — it reuses the shared `cocoar-postgres` server already
+# running on the host :5432 (DB `shelf` for the app, DB `modgud_shelfdev` for the IdP).
+# modgud (in-container) reaches it via host.docker.internal.
+#
+# Components:
+#   modgud    :8092  — IdP (issuer http://localhost:8092), dev mode, ephemeral keys
+#   mailpit   :8025  — SMTP capture (web UI/API); modgud OTP mails land here
+#
+# ⚠️ Mailpit binds :8025/:1025 — the same ports as amzettel's dev stack / a shared mailpit.
+# Stop the other one first or drop the mailpit service here.
+#
+# Shelf itself (backend :8080 + vite dev server) runs on the HOST — see dev/README.md.
+name: shelf-dev
+
+services:
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: shelf-dev-mailpit
+    ports:
+      - "8025:8025"   # web UI + REST API (read the OTP code here)
+      - "1025:1025"   # SMTP (modgud points here)
+
+  modgud:
+    image: ghcr.io/cocoar-dev/modgud:beta
+    container_name: shelf-dev-modgud
+    # Run as root in dev so JasperFx/Wolverine can write its generated handler code to
+    # /app/Internal (the non-root image can't, which surfaces as codegen permission errors).
+    user: root
+    ports:
+      - "8092:8081"   # container binds 8081 (non-root); exposed as :8092
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      DbSettings__ConnectionString: "Host=host.docker.internal;Database=modgud_shelfdev;Username=postgres;Password=postgres;Keepalive=30"
+      AppUrl: "http://0.0.0.0:8081"
+      # Issuer = the host-visible URL clients see in OIDC discovery (incl. port).
+      OpenIddict__Issuer: "http://localhost:8092"
+      OpenIddict__DevelopmentMode: "true"
+      # OTP mails → Mailpit (read the code at :8025).
+      Email__Smtp__Host: "host.docker.internal"
+      Email__Smtp__Port: "1025"
+      Email__Smtp__UseSsl: "false"
+      Email__Smtp__FromAddress: "noreply@localhost"
+      Email__Smtp__FromName: "Modgud"

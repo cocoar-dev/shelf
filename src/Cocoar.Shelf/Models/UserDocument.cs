@@ -1,5 +1,10 @@
 namespace Cocoar.Shelf.Models;
 
+/// <summary>
+/// Thin local mirror of a federated modgud identity. <see cref="Id"/> == the modgud <c>sub</c>;
+/// credentials, verification and 2FA live in modgud. This doc exists to hang app-specific user
+/// state off and to carry the cookie session (security stamp) via ASP.NET Identity.
+/// </summary>
 public class UserDocument
 {
     public Guid Id { get; set; }
@@ -14,25 +19,11 @@ public class UserDocument
 
     public string? DisplayName { get; set; }
 
-    public string? PasswordHash { get; set; }
-
     public string? SecurityStamp { get; set; }
 
     public string? ConcurrencyStamp { get; set; }
 
     public bool IsActive { get; set; } = true;
-
-    public bool LockoutEnabled { get; set; } = true;
-
-    public DateTimeOffset? LockoutEnd { get; set; }
-
-    public int AccessFailedCount { get; set; }
-
-    public bool TwoFactorEnabled { get; set; }
-
-    public string? AuthenticatorKey { get; set; }
-
-    public bool EmailOtpEnabled { get; set; }
 
     public DateTimeOffset CreatedAt { get; set; }
 }

@@ -4,15 +4,14 @@ using Microsoft.AspNetCore.Identity;
 
 namespace Cocoar.Shelf.Identity;
 
+/// <summary>
+/// Marten-backed store for the thin local user layer. Identity is federated to modgud, so only the
+/// base store plus email and security-stamp support remain — no passwords, lockout or 2FA.
+/// </summary>
 public class MartenUserStore :
     IUserStore<UserDocument>,
-    IUserPasswordStore<UserDocument>,
     IUserEmailStore<UserDocument>,
-    IUserSecurityStampStore<UserDocument>,
-    IUserLockoutStore<UserDocument>,
-    IUserTwoFactorStore<UserDocument>,
-    IUserAuthenticatorKeyStore<UserDocument>,
-    IUserPhoneNumberStore<UserDocument>
+    IUserSecurityStampStore<UserDocument>
 {
     private readonly IDocumentStore _store;
 
@@ -82,20 +81,6 @@ public class MartenUserStore :
         return Task.CompletedTask;
     }
 
-    // --- IUserPasswordStore ---
-
-    public Task SetPasswordHashAsync(UserDocument user, string? passwordHash, CancellationToken ct)
-    {
-        user.PasswordHash = passwordHash;
-        return Task.CompletedTask;
-    }
-
-    public Task<string?> GetPasswordHashAsync(UserDocument user, CancellationToken ct)
-        => Task.FromResult(user.PasswordHash);
-
-    public Task<bool> HasPasswordAsync(UserDocument user, CancellationToken ct)
-        => Task.FromResult(!string.IsNullOrEmpty(user.PasswordHash));
-
     // --- IUserEmailStore ---
 
     public Task SetEmailAsync(UserDocument user, string? email, CancellationToken ct)
@@ -108,7 +93,7 @@ public class MartenUserStore :
         => Task.FromResult(user.Email);
 
     public Task<bool> GetEmailConfirmedAsync(UserDocument user, CancellationToken ct)
-        => Task.FromResult(true); // Shelf doesn't require email confirmation
+        => Task.FromResult(true); // modgud owns verification; a brokered login means the identity is good
 
     public Task SetEmailConfirmedAsync(UserDocument user, bool confirmed, CancellationToken ct)
         => Task.CompletedTask;
@@ -139,74 +124,6 @@ public class MartenUserStore :
 
     public Task<string?> GetSecurityStampAsync(UserDocument user, CancellationToken ct)
         => Task.FromResult(user.SecurityStamp);
-
-    // --- IUserLockoutStore ---
-
-    public Task<DateTimeOffset?> GetLockoutEndDateAsync(UserDocument user, CancellationToken ct)
-        => Task.FromResult(user.LockoutEnd);
-
-    public Task SetLockoutEndDateAsync(UserDocument user, DateTimeOffset? lockoutEnd, CancellationToken ct)
-    {
-        user.LockoutEnd = lockoutEnd;
-        return Task.CompletedTask;
-    }
-
-    public Task<int> IncrementAccessFailedCountAsync(UserDocument user, CancellationToken ct)
-        => Task.FromResult(++user.AccessFailedCount);
-
-    public Task ResetAccessFailedCountAsync(UserDocument user, CancellationToken ct)
-    {
-        user.AccessFailedCount = 0;
-        return Task.CompletedTask;
-    }
-
-    public Task<int> GetAccessFailedCountAsync(UserDocument user, CancellationToken ct)
-        => Task.FromResult(user.AccessFailedCount);
-
-    public Task<bool> GetLockoutEnabledAsync(UserDocument user, CancellationToken ct)
-        => Task.FromResult(user.LockoutEnabled);
-
-    public Task SetLockoutEnabledAsync(UserDocument user, bool enabled, CancellationToken ct)
-    {
-        user.LockoutEnabled = enabled;
-        return Task.CompletedTask;
-    }
-
-    // --- IUserTwoFactorStore ---
-
-    public Task SetTwoFactorEnabledAsync(UserDocument user, bool enabled, CancellationToken ct)
-    {
-        user.TwoFactorEnabled = enabled;
-        return Task.CompletedTask;
-    }
-
-    public Task<bool> GetTwoFactorEnabledAsync(UserDocument user, CancellationToken ct)
-        => Task.FromResult(user.TwoFactorEnabled);
-
-    // --- IUserAuthenticatorKeyStore ---
-
-    public Task SetAuthenticatorKeyAsync(UserDocument user, string key, CancellationToken ct)
-    {
-        user.AuthenticatorKey = key;
-        return Task.CompletedTask;
-    }
-
-    public Task<string?> GetAuthenticatorKeyAsync(UserDocument user, CancellationToken ct)
-        => Task.FromResult(user.AuthenticatorKey);
-
-    // --- IUserPhoneNumberStore (no-op stubs, required by Identity) ---
-
-    public Task SetPhoneNumberAsync(UserDocument user, string? phoneNumber, CancellationToken ct)
-        => Task.CompletedTask;
-
-    public Task<string?> GetPhoneNumberAsync(UserDocument user, CancellationToken ct)
-        => Task.FromResult<string?>(null);
-
-    public Task<bool> GetPhoneNumberConfirmedAsync(UserDocument user, CancellationToken ct)
-        => Task.FromResult(false);
-
-    public Task SetPhoneNumberConfirmedAsync(UserDocument user, bool confirmed, CancellationToken ct)
-        => Task.CompletedTask;
 
     public void Dispose()
     {
