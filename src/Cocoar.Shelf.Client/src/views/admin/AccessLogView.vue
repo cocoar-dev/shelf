@@ -22,7 +22,7 @@ const total = ref(0);
 const viewportMenu = useContextMenu();
 
 const builder = CoarGridBuilder.create<AccessLogRow>()
-  .persistColumnState('admin-access-log')
+  .persistColumnState('admin-access-log-v2')
   .option('getRowId', (p: any) => p.data.id)
   .rowDataRef(rows)
   .searchHighlight()
@@ -30,15 +30,15 @@ const builder = CoarGridBuilder.create<AccessLogRow>()
     viewportMenu.open($event);
   })
   .columns([
-    (col: any) => col.field('timestamp').header('Time').width(170)
+    (col: any) => col.field('timestamp').header('Time').width(190).option('minWidth', 170)
       .option('valueFormatter', (p: any) => p.value ? new Date(p.value).toLocaleString() : ''),
-    (col: any) => col.field('ip').header('IP').width(130),
-    (col: any) => col.field('product').header('Product').width(130),
-    (col: any) => col.field('version').header('Version').width(90),
-    (col: any) => col.field('path').header('Path').flex(1),
-    (col: any) => col.field('country').header('Country').width(90),
-    (col: any) => col.field('city').header('City').width(110),
-    (col: any) => col.field('userAgent').header('User Agent').width(200),
+    (col: any) => col.field('ip').header('IP').width(130).option('minWidth', 120),
+    (col: any) => col.field('product').header('Product').width(140).option('minWidth', 120),
+    (col: any) => col.field('version').header('Version').width(90).option('minWidth', 85),
+    (col: any) => col.field('path').header('Path').flex(1).option('minWidth', 140),
+    (col: any) => col.field('country').header('Country').width(110).option('minWidth', 95),
+    (col: any) => col.field('city').header('City').width(120).option('minWidth', 90),
+    (col: any) => col.field('userAgent').header('User Agent').flex(1).option('minWidth', 200),
   ]);
 
 async function load() {

@@ -41,7 +41,8 @@ onMounted(loadStatus);
 
 <template>
   <div class="p-4 flex flex-col gap-4" style="max-width: 640px">
-    <CoarCard title="GeoIP Database">
+    <CoarCard>
+      <template #header><h2 class="card-title">GeoIP Database</h2></template>
       <p class="desc">
         Resolves visitor IPs to country and city for the access log, using the free
         DB-IP Lite database. The database is cached in memory — re-download monthly
@@ -50,7 +51,7 @@ onMounted(loadStatus);
 
       <div class="status-row">
         <span class="status-label">Status</span>
-        <CoarTag :variant="status?.loaded ? 'success' : 'neutral'" size="s">
+        <CoarTag :variant="status?.loaded ? 'success' : 'warning'" size="s">
           {{ status?.loaded ? 'Loaded' : 'Not loaded' }}
         </CoarTag>
       </div>

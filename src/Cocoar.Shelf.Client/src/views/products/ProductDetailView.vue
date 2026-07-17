@@ -4,7 +4,8 @@
     <CoarNote v-if="successMessage" variant="success" class="mb-4">{{ successMessage }}</CoarNote>
 
     <!-- Product Info -->
-    <CoarCard v-if="product" title="Product Info" class="mb-4">
+    <CoarCard v-if="product" class="mb-4">
+      <template #header><h2 class="card-title">Product Info</h2></template>
       <div class="info-grid">
         <div class="info-row">
           <span class="info-label">Name</span>
@@ -41,14 +42,21 @@
     </CoarCard>
 
     <!-- Upload Version -->
-    <CoarCard title="Upload Version" class="mb-4">
+    <CoarCard class="mb-4">
+      <template #header><h2 class="card-title">Upload Version</h2></template>
       <div class="upload-row">
         <CoarFormField label="Version" class="upload-version-input">
           <CoarTextInput v-model="uploadVersion" placeholder="v1.0.0" />
         </CoarFormField>
         <div class="upload-file">
           <label class="file-label">ZIP File</label>
-          <input type="file" accept=".zip" @change="onFileSelected" ref="fileInput" />
+          <div class="file-picker">
+            <CoarButton variant="secondary" size="s" @click="fileInput?.click()">Choose File…</CoarButton>
+            <span class="file-name" :class="{ 'file-name--empty': !uploadFile }">
+              {{ uploadFile?.name ?? 'No file selected' }}
+            </span>
+            <input ref="fileInput" type="file" accept=".zip" class="file-input-hidden" @change="onFileSelected" />
+          </div>
         </div>
         <CoarButton
           variant="primary"
@@ -62,7 +70,8 @@
     </CoarCard>
 
     <!-- Versions -->
-    <CoarCard v-if="product && product.versions.length > 0" title="Versions">
+    <CoarCard v-if="product && product.versions.length > 0">
+      <template #header><h2 class="card-title">Versions</h2></template>
       <CoarTable variant="plain" hover>
         <thead>
           <tr>
@@ -266,6 +275,28 @@ async function onDeleteProduct() {
   font-weight: 500;
   color: var(--coar-text-neutral-secondary);
   margin-bottom: 6px;
+}
+
+.file-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.file-name {
+  font-size: 0.85rem;
+  color: var(--coar-text-neutral-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.file-name--empty {
+  color: var(--coar-text-neutral-tertiary);
+}
+
+.file-input-hidden {
+  display: none;
 }
 
 .version-link {

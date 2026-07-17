@@ -21,7 +21,7 @@ const cellMenu = useContextMenu();
 const viewportMenu = useContextMenu();
 
 const builder = CoarGridBuilder.create<UserRow>()
-  .persistColumnState('admin-users')
+  .persistColumnState('admin-users-v2')
   .option('getRowId', (p: any) => p.data.id)
   .rowDataRef(users)
   .searchHighlight()
@@ -38,10 +38,10 @@ const builder = CoarGridBuilder.create<UserRow>()
     viewportMenu.open($event);
   })
   .columns([
-    (col: any) => col.field('displayName').header('Display Name').flex(1),
-    (col: any) => col.field('email').header('Email').flex(1),
-    (col: any) => col.icon('isActive', { color: '#16a34a', size: 's' }).option('valueGetter', (p: any) => p.data?.isActive ? 'check' : '').header('Active').width(80),
-    (col: any) => col.field('createdAt').header('First Login').width(160)
+    (col: any) => col.field('displayName').header('Display Name').flex(1).option('minWidth', 180),
+    (col: any) => col.field('email').header('Email').flex(1).option('minWidth', 220),
+    (col: any) => col.icon('isActive', { color: '#16a34a', size: 's' }).option('valueGetter', (p: any) => p.data?.isActive ? 'check' : '').header('Active').width(90).option('minWidth', 90),
+    (col: any) => col.field('createdAt').header('First Login').width(170).option('minWidth', 150)
       .option('valueFormatter', (p: any) => p.value ? new Date(p.value).toLocaleDateString() : ''),
   ]);
 

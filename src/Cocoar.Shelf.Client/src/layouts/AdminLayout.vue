@@ -247,7 +247,7 @@ async function logout() {
 }
 
 .container-mode {
-  max-width: 100%;
+  max-width: 1200px;
   width: 90%;
   margin-left: auto;
   margin-right: auto;

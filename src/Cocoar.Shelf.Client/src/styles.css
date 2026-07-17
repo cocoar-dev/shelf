@@ -3,10 +3,14 @@
 @import "@cocoar/vue-data-grid/styles";
 
 :root {
-  --color-primary: #2563eb;
-  --color-primary-dark: #1e40af;
-  --color-header: #2563eb;
-  --color-selection: #dbeafe;
+  /* One accent everywhere: the Cocoar brand blue the vue-ui theme's primary
+     buttons, links and pills resolve to (#1183CD) — header must match. */
+  --color-primary: #1183cd;
+  --color-primary-dark: #0e6db0;
+  --color-header: #1183cd;
+  --color-selection: #d7ecf9;
+  /* Info notes: brand blue border instead of the theme's near-black bold border. */
+  --coar-border-semantic-info-bold: #1183cd;
 }
 
 :root.dark-mode,
@@ -30,6 +34,26 @@ body {
 
 .ag-theme-cocoar {
   --ag-column-border: 1px solid transparent;
+}
+
+/* CoarCard has no title prop — headings go into the #header slot. One shared
+   style so every card title looks the same. */
+.card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--coar-text-neutral-primary);
+  margin: 0;
+}
+
+/* Disabled buttons must read as disabled: the theme keeps the brand fill at
+   0.5 opacity, which still looks clickable. Wash it out further. */
+.coar-button:disabled {
+  cursor: not-allowed;
+}
+
+.coar-button--primary:disabled {
+  filter: grayscale(0.5);
+  opacity: 0.45;
 }
 
 .ag-row-selected {

@@ -28,7 +28,7 @@ ui.set((ctx) => {
 const rowData = computed(() => productsStore.items);
 
 const builder = CoarGridBuilder.create<Product>()
-  .persistColumnState('shelf-products')
+  .persistColumnState('shelf-products-v2')
   .option('getRowId', (p: any) => p.data.name)
   .rowDataRef(rowData)
   .searchHighlight()
@@ -48,13 +48,14 @@ const builder = CoarGridBuilder.create<Product>()
     viewportMenu.open($event);
   })
   .columns([
-    (col: any) => col.field('name').header('Name').width(180),
-    (col: any) => col.field('displayName').header('Display Name').flex(1),
-    (col: any) => col.field('visibility').header('Visibility').width(110),
-    (col: any) => col.field('latest').header('Latest').width(120),
-    (col: any) => col.field('versions').header('Versions').width(100)
+    (col: any) => col.field('name').header('Name').width(200).option('minWidth', 140),
+    (col: any) => col.field('displayName').header('Display Name').flex(1).option('minWidth', 180),
+    (col: any) => col.field('description').header('Description').flex(2).option('minWidth', 200),
+    (col: any) => col.field('visibility').header('Visibility').width(110).option('minWidth', 100),
+    (col: any) => col.field('latest').header('Latest').width(110).option('minWidth', 90),
+    (col: any) => col.field('versions').header('Versions').width(100).option('minWidth', 95)
       .option('valueGetter', (p: any) => p.data?.versions?.length ?? 0),
-    (col: any) => col.field('source').header('Source').width(100),
+    (col: any) => col.field('source').header('Source').width(100).option('minWidth', 90),
   ]);
 
 async function deleteProduct() {

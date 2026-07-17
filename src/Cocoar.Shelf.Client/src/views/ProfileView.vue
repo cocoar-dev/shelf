@@ -1,7 +1,8 @@
 <template>
   <div class="p-6 flex flex-col gap-6">
     <!-- Account Info -->
-    <CoarCard title="Account">
+    <CoarCard>
+      <template #header><h2 class="card-title">Account</h2></template>
       <div class="info-grid">
         <div class="info-row"><span class="info-label">Display Name</span><span>{{ user?.displayName ?? '—' }}</span></div>
         <div class="info-row"><span class="info-label">Email</span><span>{{ user?.email ?? '—' }}</span></div>
@@ -10,7 +11,8 @@
     </CoarCard>
 
     <!-- Security -->
-    <CoarCard title="Sign-in & Security">
+    <CoarCard>
+      <template #header><h2 class="card-title">Sign-in &amp; Security</h2></template>
       <p class="security-desc">
         Sign-in and security (login codes, passkeys, two-factor) are managed centrally by the
         Cocoar account service. Changes made there apply to all connected apps.
