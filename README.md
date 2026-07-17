@@ -34,9 +34,25 @@ services:
       - docs-data:/data/docs
       - config-data:/data/config:ro
     environment:
+      - Shelf__Database__ConnectionString=Host=postgres;Database=shelf;Username=postgres;Password=${POSTGRES_PASSWORD}
+      - Shelf__Modgud__Issuer=https://auth.example.com
+      - Shelf__Modgud__WebClientId=shelf-web
+      - Shelf__Modgud__WebClientSecret=${SHELF_MODGUD_SECRET}
       - Shelf__ApiKey=${SHELF_API_KEY:-}
     restart: unless-stopped
+
+  postgres:
+    image: postgres:17
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=shelf
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+    restart: unless-stopped
 ```
+
+Shelf requires PostgreSQL. The admin UI signs in via [Modgud](https://github.com/cocoar-dev/modgud)
+(email one-time code); CI/CD uses API keys.
 
 Deploy via Upload API:
 
@@ -45,7 +61,7 @@ curl -X POST \
   -H "Authorization: Bearer $SHELF_API_KEY" \
   -H "Content-Type: application/zip" \
   --data-binary @docs.zip \
-  https://docs.example.com/api/products/configuration/versions/v5.2.0
+  https://docs.example.com/_api/products/configuration/versions/v5.2.0
 ```
 
 Or place files directly in the volume:

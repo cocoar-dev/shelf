@@ -9,9 +9,30 @@ services:
       - docs-data:/data/docs
       - config-data:/data/config:ro
     environment:
+      # PostgreSQL is required (products, users, settings, access log)
+      - Shelf__Database__ConnectionString=${SHELF_DB_CONNECTION:-Host=postgres;Database=shelf;Username=postgres;Password=postgres}
+      # modgud federation for the admin login
+      - Shelf__Modgud__Issuer=${SHELF_MODGUD_ISSUER:-https://auth.cocoar.dev}
+      - Shelf__Modgud__Audience=${SHELF_MODGUD_AUDIENCE:-shelf}
+      - Shelf__Modgud__WebClientId=${SHELF_MODGUD_CLIENT_ID:-shelf-web}
+      - Shelf__Modgud__WebClientSecret=${SHELF_MODGUD_CLIENT_SECRET:-}
+      # Bootstrap master API key for CI/CD (per-product + UI-managed keys exist alongside)
       - Shelf__ApiKey=${SHELF_API_KEY:-}
+      - Shelf__AccessLog__Enabled=${SHELF_ACCESS_LOG:-true}
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:17
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=shelf
+    volumes:
+      - pg-data:/var/lib/postgresql/data
     restart: unless-stopped
 
 volumes:
   docs-data:
   config-data:
+  pg-data:

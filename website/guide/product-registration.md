@@ -6,7 +6,7 @@ Before documentation can be deployed via the [Upload API](./upload-api.md), a pr
 
 The easiest way to register products is through the [Admin UI](./admin-ui.md) at `/admin/`:
 
-1. Log in with your API key
+1. Sign in with your email (one-time code)
 2. Navigate to the product management section
 3. Click "Create Product"
 4. Fill in the product details (name, display name, description, visibility)

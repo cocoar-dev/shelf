@@ -57,17 +57,23 @@ This can happen if the CSS file's content type is not detected as `text/css`. Ch
 
 ## Admin UI Not Loading
 
-**Check that an API key is configured.** The Admin UI requires `Shelf__ApiKey` to be set. Without it, authentication is disabled and protected endpoints return `503`.
-
 **Check the URL.** The Admin UI is served at `/admin/` (with trailing slash). If you have a `PathBase` configured, the URL is `{PathBase}/admin/`.
 
 **Check browser console.** Open DevTools and look for JavaScript errors or failed network requests to `/_api/` endpoints.
 
 **Cookie issues.** If login succeeds but you're immediately logged out, check that cookies are not being blocked. The Admin UI uses a `shelf.auth` cookie for session management.
 
-## API Returns 503
+## Login Code Never Arrives
 
-This means no API key is configured. Set `Shelf__ApiKey` in your environment or `data/configuration.json`. All protected endpoints (product CRUD, upload, delete) require an API key to be configured.
+The admin login is brokered through [Modgud](./authentication.md). Check that `Shelf__Modgud__Issuer` points at a reachable Modgud instance, the `WebClientId`/`WebClientSecret` match a registered confidential client with the `urn:cocoar:otp` grant, and the email address exists as a Modgud user. Modgud throttles code re-sends per user for a couple of minutes.
+
+## Uploads Return 401
+
+No valid API key was presented. Check the Bearer token against the product's per-product key or a master key — see [Authentication](./authentication.md#api-keys-cicd).
+
+## Startup Fails: Database Required
+
+Shelf requires PostgreSQL. Set `Shelf__Database__ConnectionString` — see [Configuration](./configuration.md#database).
 
 ## Overlapping Volume Mounts
 

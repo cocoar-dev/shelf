@@ -1,159 +1,105 @@
 # Shelf
 
-Static documentation hosting platform for Cocoar products.
-Serves VitePress-generated documentation with multi-product and multi-version support.
+Static documentation hosting platform for Cocoar products (docs.cocoar.dev).
+Serves VitePress-generated documentation with multi-product and multi-version support,
+plus a Vue 3 admin UI, analytics, and CI/CD upload API.
 
-## Build
+Internal knowledge (architecture decisions, deployment runbook, dev-environment context)
+lives in **Atlas → `shelf/`** — the public product docs are the VitePress site in `website/`.
+
+## Build & Test
 
 ```bash
 dotnet build ./src -c Release
-dotnet test ./src -c Release
-dotnet publish ./src/Cocoar.Shelf -c Release -o ./artifacts
+dotnet test ./src -c Release          # needs Docker (Testcontainers PostgreSQL)
+cd src/Cocoar.Shelf.Client && pnpm run build   # Vue client → ../Cocoar.Shelf/wwwroot
 ```
 
-## Docker
-
-```bash
-docker compose up --build
-```
+Local dev quickstart (modgud + mailpit stack, seed, test logins): `dev/README.md`.
 
 ## Architecture
 
-- **ASP.NET Core** app serving static files from a mounted volume
-- Products and versions organized as `{docsRoot}/{product}/{version}/`
-- Versions are auto-detected by scanning the filesystem (SemVer: `v5`, `v5.2`, `v5.2.0`, `v5.2.0-beta.1`)
-- Highest version number is automatically the "latest"
-- Requests without explicit version are redirected (302) to the latest version
-- `FileSystemWatcher` invalidates the cache when directories are added/removed
-- **Base path rewriting**: Shelf detects the original VitePress base path and rewrites it in HTML, CSS, and JS responses to match the product/version URL
+- **ASP.NET Core (net10.0)** + **Marten/PostgreSQL** (required — no file-only mode) +
+  **Vue 3 SPA** (`src/Cocoar.Shelf.Client`, @cocoar/vue-ui + vue-data-grid, desktop-only)
+- Docs on the filesystem: `{DocsRoot}/{product}/{version}/`, versions auto-detected
+  (SemVer regex), highest stable = "latest", `FileSystemWatcher` invalidates caches
+- **Base path rewriting**: VitePress builds with `base: '/'` are rewritten to
+  `/{product}/{version}/` in HTML/CSS/JS responses (`DocsRoutingMiddleware` + `BasePathRewriter`)
+- Products, users, settings and the access log live in PostgreSQL (schema `shelf`);
+  JSON files in `{ConfigRoot}/products/` are imported once at startup (DB wins)
+
+### Authentication (modgud federation)
+
+All human auth is federated to **modgud** (Cocoar's OIDC IdP) — the amzettel BFF pattern:
+
+- Login = email + one-time code; the backend brokers modgud's `urn:cocoar:otp` grant
+  server-to-server (`Identity/ModgudLoginBroker`) and mints the `shelf.auth` cookie.
+  The browser never reaches modgud. No local passwords/2FA.
+- Thin local user layer: `UserDocument` (Id == modgud `sub`), JIT-created at login.
+  ASP.NET Identity plumbing exists only for the cookie/SecurityStamp pipeline and the
+  test seam (`/_api/test/signin`, mapped only when `ShelfOptions.TestAuth`).
+- RBAC: `resource_access[shelf]` stamped on the cookie, flattened per request
+  (`ModgudClaimsTransformation`); **Admin** = permission `shelf:admin` OR email in
+  `Modgud.Admins` allowlist (`AdminCheck`, wired as the `"Admin"` policy).
+- API keys for CI/CD (`ApiKeyFilter`): per-product key → UI-managed master key
+  (`ShelfSettings` doc) → config/env bootstrap key. Keys are readable for admins
+  (deliberate: docs hosting, not an IdP).
 
 ## Configuration
 
-All settings are in the `Shelf` section of `appsettings.json` or via environment variables (`Shelf__PropertyName`).
+`data/configuration.json` (Cocoar.Configuration) + env overrides with `Shelf__` prefix.
+NOTE: the app reads the *build output copy* of the file — config edits need a build.
 
-| Property | Default | Description |
-|----------|---------|-------------|
-| `DocsRoot` | `/data/docs` | Root directory for documentation files |
-| `ConfigRoot` | `/data/config` | Root directory for product config files |
-| `PathBase` | `""` | Global URL prefix (e.g. `/docs` to serve under `example.com/docs/`) |
-| `VersionPattern` | `^v?\d+(\.\d+(\.\d+(-[\w.]+)?)?)?$` | Regex for valid version directory names (SemVer) |
-| `BasePlaceholder` | `/__shelf__/` | Placeholder for non-root VitePress base paths |
-| `ApiKey` | `""` | API key for upload endpoint. Empty = upload disabled (503) |
-| `MaxUploadSizeBytes` | `104857600` | Max upload size (100 MB) |
+Key options: `Database.ConnectionString` (**required**), `Modgud.{Issuer,Audience,AuthBase,
+WebClientId,WebClientSecret,AdminPermission,Admins}`, `ApiKey` (bootstrap master key),
+`AccessLog.{Enabled,RetentionDays}`, `DocsRoot`, `ConfigRoot`, `PathBase`, `VersionPattern`,
+`MaxUploadSizeBytes`, `TestAuth` (test fixture only).
 
-### PathBase
+## API surface (`/_api`)
 
-When Shelf runs behind a reverse proxy under a sub-path, set `PathBase` to match. All routes, redirects, and base path rewriting automatically include the prefix:
-
-```
-PathBase=""      → /configuration/v5/    /api/products
-PathBase="/docs" → /docs/configuration/v5/    /docs/api/products
-```
-
-## Product Config
-
-Products must be registered via JSON files in `{ConfigRoot}/products/`. One file per product:
-
-```
-/data/config/products/configuration.json
-```
-```json
-{
-  "name": "configuration",
-  "displayName": "Cocoar.Configuration",
-  "description": "Reactive configuration for .NET",
-  "source": "upload"
-}
-```
-
-Config files are loaded at startup and live-reloaded via FileSystemWatcher. The `name` field is the product identifier used in URLs and API calls.
-
-## Upload API
-
-Shelf provides an HTTP API for deploying documentation versions, designed for CI/CD pipelines.
-
-### Endpoints
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/api/products` | No | All registered products with version info |
-| `GET` | `/api/products/{product}/versions` | No | Versions of a specific product |
-| `POST` | `/api/products/{product}/versions/{version}` | Bearer | Upload a ZIP as a new version |
-
-### Upload Flow
-
-```bash
-curl -X POST \
-  -H "Authorization: Bearer $SHELF_API_KEY" \
-  -H "Content-Type: application/zip" \
-  --data-binary @docs.zip \
-  https://docs.cocoar.dev/api/products/configuration/versions/v6
-```
-
-1. API key is validated (401 if wrong, 503 if not configured)
-2. Product must be registered in config (404 if not)
-3. Version format must match `VersionPattern` (400 if not)
-4. ZIP is extracted to a temp directory, validated (index.html required), and atomically moved into place
-5. ManifestService detects the new version automatically via FileSystemWatcher
-6. Response: 201 Created
-
-### Error Responses
-
-| Status | When |
-|--------|------|
-| 201 | Successfully deployed |
-| 400 | Invalid version format, corrupt ZIP, or missing index.html |
-| 401 | Missing or invalid API key |
-| 404 | Product not registered |
-| 409 | Concurrent upload for same product/version |
-| 413 | ZIP exceeds `MaxUploadSizeBytes` |
-| 503 | No API key configured (upload disabled) |
-
-### Security
-
-- **API key auth**: `Authorization: Bearer {key}` checked against `ShelfOptions.ApiKey`
-- **ZIP-Slip protection**: All extracted paths are validated to stay within the target directory
-- **Atomic deployment**: Extract to temp dir, validate, then move — Shelf never serves a half-extracted state
-- **Per-version locking**: Concurrent uploads for the same product/version return 409
-
-## Base Path Rewriting
-
-Shelf rewrites the VitePress base path so docs built with `base: '/'` work under `/{product}/{version}/` (or `{PathBase}/{product}/{version}/` when PathBase is set).
-Rewriting happens at four levels:
-
-1. **HTML**: `href="/..."` and `src="/..."` attribute values
-2. **HTML site data**: `"base":"/"` in the inlined `__VP_SITE_DATA__` JSON
-3. **CSS**: `url(/...)` font/asset references
-4. **JS**: Two targeted VitePress patterns (router base constant + modulepreload URL builder) and search index document IDs
-
-For non-root bases (e.g., `/__shelf__/`), a simple global string replace is used instead.
+- Public: `GET /products`, `GET /products/{p}`, `GET /products/{p}/versions`, `GET /shelf-config`
+- Cookie or Bearer key: product CRUD, version upload/delete (`ApiKeyFilter`)
+- Auth: `POST /auth/otp/request|verify`, `POST /auth/logout`, `GET /auth/me`
+- Admin policy: `/settings/*` (master key), `/products/{p}/api-key` (reveal), `/users/*`,
+  `/analytics/*` (visits, summary, GeoIP status/download)
 
 ## Key Files
 
-- `src/Cocoar.Shelf/Program.cs` — App startup, service registration, middleware pipeline
-- `src/Cocoar.Shelf/ShelfOptions.cs` — All configuration properties
-- `src/Cocoar.Shelf/Middleware/DocsRoutingMiddleware.cs` — Core routing logic + response rewriting
-- `src/Cocoar.Shelf/Services/ManifestService.cs` — Scans filesystem, caches product versions
-- `src/Cocoar.Shelf/Services/ProductConfigService.cs` — Reads product JSON configs, live-reload
-- `src/Cocoar.Shelf/Services/UploadService.cs` — ZIP extraction, validation, atomic deployment
-- `src/Cocoar.Shelf/Endpoints/ApiEndpoints.cs` — Minimal API endpoints (products, versions, upload)
-- `src/Cocoar.Shelf/Endpoints/ApiKeyFilter.cs` — Bearer token auth for upload endpoint
-- `src/Cocoar.Shelf/Services/BasePathDetector.cs` — Detects original VitePress base from index.html
-- `src/Cocoar.Shelf/Services/BasePathRewriter.cs` — Rewrites base path in HTML/CSS/JS responses
+Backend (`src/Cocoar.Shelf/`):
+- `Program.cs` — startup, Marten schema, auth wiring, middleware pipeline
+- `ShelfOptions.cs` — all configuration (incl. `ModgudOptions`)
+- `Identity/` — ModgudLoginBroker, ModgudUserProvisioning, ModgudClaimsTransformation,
+  RbacCookiePreservation, AdminCheck, MartenUserStore
+- `Endpoints/` — ApiEndpoints (products/versions), AuthEndpoints, SettingsEndpoints,
+  UserEndpoints, AnalyticsEndpoints, TestAuthEndpoints, ApiKeyFilter
+- `Middleware/DocsRoutingMiddleware.cs` — docs routing, rewriting, access-log recording
+  (HTML GETs only)
+- `Services/` — ManifestService, UploadService, SettingsService, GeoIpService,
+  AccessLogChannel/PersistenceService, MartenProductConfigService + migration,
+  BasePathDetector/Rewriter
 
-## Volume Structure
+Frontend (`src/Cocoar.Shelf.Client/src/`):
+- Routed modals via `@cocoar/vue-fragment-parser` (`route.meta.routedFragments`, URL-hash
+  `#create` / `#<id>`; fixed height via `overlayOptions`); shared shell `components/ModalLayout.vue`
+- `views/products/` — grid + tabbed edit modal (General / Tags & API / Versions)
+- `views/admin/` — GeneralSettings (master key), Users, AccessLog, GeoIP; `views/AnalyticsView.vue`
+- Conventions: labels via `CoarFormField` (inputs have NO label prop in vue-ui 1.8), card
+  titles via `CoarCard` `#header` slot, destructive actions via `useDialog().confirm`,
+  grids bind `rowDataRef(computed(() => store.items))` to Pinia stores; bump
+  `persistColumnState` keys when changing columns
 
-```
-/data/docs/{product}/{version}/   (e.g. /data/docs/configuration/v6/)
-/data/config/products/{product}.json
-```
+## Testing
 
-Docs: New versions are detected automatically via FileSystemWatcher — either deployed via Upload API or placed manually.
-Config: Product registration files, also live-reloaded via FileSystemWatcher.
+- Integration tests: Testcontainers PostgreSQL, in-process host (`ShelfFixture` sets
+  `Shelf__TestAuth=true` and signs in via the seam — no modgud needed)
+- `TestSignInRequest.Admin = true` stamps a modgud-shaped `resource_access` so the real
+  RBAC path is exercised
 
 ## Design Decisions
 
-- **ProductConfigService and ManifestService are independent** — no mutual dependency. API endpoints compose both.
-- **Upload writes directly into the docs volume** → ManifestService detects it automatically. No manual cache invalidation needed.
-- **Product must be registered first** (JSON config file) → no auto-creation. Enforces explicit product registration.
-- **Source type as string** in ProductConfig (`"upload"`, future `"github-release"`) → extensible without breaking changes.
+- **modgud owns identity** — Shelf keeps only the thin mirror; no local credentials ever
+- **PostgreSQL is mandatory** — the file-based fallback was removed with the federation
+- **DB is the source of truth for products** — JSON files are a one-time startup seed
+- **Public read endpoints stay unauthenticated**; keys/admin data are admin-gated
+- **Access log counts page views** (HTML GETs), not assets or HEAD requests
+- **Admin UI is desktop-only** — no mobile optimization
