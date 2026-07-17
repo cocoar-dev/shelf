@@ -352,7 +352,6 @@ async function onDeleteVersion(version: string) {
 <style scoped>
 .tab-panel {
   padding-top: 16px;
-  min-height: 22rem;
 }
 
 .visibility-select {

@@ -98,6 +98,7 @@ watch(
 .modal-container {
   display: flex;
   flex-direction: column;
+  height: 100%; /* fill the overlay's fixed height (set via routedFragment overlayOptions) */
   max-height: 90vh;
   max-width: 95vw;
   border-radius: var(--coar-radius-m, 4px);

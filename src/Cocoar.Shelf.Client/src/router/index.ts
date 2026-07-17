@@ -30,6 +30,8 @@ export const router = createRouter({
                 type: 'modal',
                 path: ':id',
                 component: () => import('@/views/products/ProductFormModal.vue'),
+                // Fixed modal height — switching tabs must not resize; content scrolls instead.
+                overlayOptions: { size: { height: '80vh' } },
               },
             ],
           },
