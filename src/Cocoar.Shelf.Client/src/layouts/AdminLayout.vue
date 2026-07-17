@@ -123,12 +123,14 @@ async function logout() {
           @click="router.push('/admin/products')"
         />
         <CoarSidebarItem
+          v-if="authStore.user?.isAdmin"
           icon="bar-chart-3"
           label="Analytics"
           :active="route.path.startsWith('/admin/analytics')"
           @click="router.push('/admin/analytics')"
         />
         <CoarSidebarItem
+          v-if="authStore.user?.isAdmin"
           icon="cog"
           label="Administration"
           :active="route.path.startsWith('/admin/settings')"

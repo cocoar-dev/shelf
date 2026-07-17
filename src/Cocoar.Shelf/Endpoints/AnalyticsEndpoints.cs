@@ -9,16 +9,13 @@ public static class AnalyticsEndpoints
 {
     public static RouteGroupBuilder MapAnalyticsEndpoints(this RouteGroupBuilder api)
     {
-        var analytics = api.MapGroup("/analytics");
+        // Access data carries visitor IPs — admin-only, not just any authenticated session.
+        var analytics = api.MapGroup("/analytics").RequireAuthorization("Admin");
 
-        analytics.MapGet("/visits", GetVisits)
-            .AddEndpointFilter<ApiKeyFilter>();
-        analytics.MapGet("/summary", GetSummary)
-            .AddEndpointFilter<ApiKeyFilter>();
-        analytics.MapGet("/geo/status", GetGeoStatus)
-            .AddEndpointFilter<ApiKeyFilter>();
-        analytics.MapPost("/geo/download", DownloadGeoDb)
-            .AddEndpointFilter<ApiKeyFilter>();
+        analytics.MapGet("/visits", GetVisits);
+        analytics.MapGet("/summary", GetSummary);
+        analytics.MapGet("/geo/status", GetGeoStatus);
+        analytics.MapPost("/geo/download", DownloadGeoDb);
 
         return api;
     }

@@ -16,7 +16,7 @@
     "Admins": ["bwi@doob.at"]
   },
   "AccessLog": {
-    "Enabled": false,
+    "Enabled": true,
     "RetentionDays": 90
   },
   "Logging": {

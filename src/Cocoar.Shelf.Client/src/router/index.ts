@@ -26,7 +26,11 @@ export const router = createRouter({
         { path: 'products/:name', component: () => import('@/views/products/ProductDetailView.vue') },
         { path: 'products/:name/edit', component: () => import('@/views/products/ProductFormView.vue') },
         { path: 'profile', component: () => import('@/views/ProfileView.vue') },
-        { path: 'analytics', component: () => import('@/views/DashboardView.vue') }, // placeholder
+        {
+          path: 'analytics',
+          component: () => import('@/views/AnalyticsView.vue'),
+          meta: { admin: true },
+        },
         {
           path: 'settings',
           component: () => import('@/views/admin/AdminSettingsView.vue'),
@@ -34,6 +38,8 @@ export const router = createRouter({
           children: [
             { path: '', redirect: '/admin/settings/users' },
             { path: 'users', component: () => import('@/views/admin/UserListView.vue') },
+            { path: 'access-log', component: () => import('@/views/admin/AccessLogView.vue') },
+            { path: 'geoip', component: () => import('@/views/admin/GeoIpView.vue') },
           ],
         },
       ],
