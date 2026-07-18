@@ -1,5 +1,5 @@
-using Cocoar.Shelf.Identity;
 using Cocoar.Shelf.Services;
+using Cocoar.Shelf.Services.Access;
 
 namespace Cocoar.Shelf.Endpoints;
 
@@ -25,11 +25,13 @@ public partial class ApiKeyFilter(ILogger<ApiKeyFilter> logger) : IEndpointFilte
         }
 
         // Cookie session (Admin UI): product writes are an admin action, so a cookie alone is not
-        // enough — the principal must be admin. This closes the gap where any authenticated user
-        // (JIT-provisioned at first modgud login) could create/update/delete products.
+        // enough — the principal must be admin (token permission, allowlist, or an IsAdminGroup grant).
+        // This closes the gap where any authenticated user (JIT-provisioned at first modgud login)
+        // could create/update/delete products.
         if (context.HttpContext.User.Identity?.IsAuthenticated == true)
         {
-            if (AdminCheck.IsAdmin(context.HttpContext.User, options))
+            var resolver = context.HttpContext.RequestServices.GetRequiredService<IAccessResolver>();
+            if (await resolver.IsAdminAsync(context.HttpContext.User))
                 return await next(context);
 
             LogForbiddenNonAdmin(logger);

@@ -229,7 +229,16 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("Admin", policy => policy
         .RequireAuthenticatedUser()
-        .RequireAssertion(ctx => AdminCheck.IsAdmin(ctx.User, config)));
+        .RequireAssertion(async ctx =>
+        {
+            // Fast path: token permission / allowlist admin. Otherwise consult group grants
+            // (IsAdminGroup) per request via the resolver on the current HttpContext.
+            if (AdminCheck.IsAdmin(ctx.User, config))
+                return true;
+            if (ctx.Resource is HttpContext http)
+                return await http.RequestServices.GetRequiredService<IAccessResolver>().IsAdminAsync(ctx.User);
+            return false;
+        }));
 });
 
 // Behind a TLS-terminating reverse proxy: honor X-Forwarded-Proto/Host so the app builds correct
@@ -257,6 +266,7 @@ builder.Services.AddJsEval();
 builder.Services.AddScoped<IGroupMembershipEvaluator, JsEvalGroupMembershipEvaluator>();
 builder.Services.AddScoped<IGroupMembershipRecalculator, GroupMembershipRecalculator>();
 builder.Services.AddScoped<ILoginAccessProcessor, LoginAccessProcessor>();
+builder.Services.AddScoped<IAccessResolver, AccessResolver>();
 
 // Access log
 if (config.AccessLog.Enabled)

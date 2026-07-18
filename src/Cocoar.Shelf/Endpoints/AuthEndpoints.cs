@@ -1,5 +1,6 @@
 using Cocoar.Shelf.Identity;
 using Cocoar.Shelf.Models;
+using Cocoar.Shelf.Services.Access;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Identity;
@@ -69,7 +70,7 @@ public static partial class AuthEndpoints
     private static async Task<IResult> GetMe(
         HttpContext httpContext,
         UserManager<UserDocument> userManager,
-        ShelfOptions options)
+        IAccessResolver accessResolver)
     {
         if (CurrentUser.Id(httpContext) is not { } uid)
             return Results.Json(new { authenticated = false }, statusCode: 401);
@@ -84,7 +85,8 @@ public static partial class AuthEndpoints
             id = user.Id,
             email = user.Email,
             displayName = user.DisplayName ?? user.UserName,
-            isAdmin = AdminCheck.IsAdmin(httpContext.User, options),
+            // Includes the IsAdminGroup path, so the SPA gates correctly for group-admins.
+            isAdmin = await accessResolver.IsAdminAsync(httpContext.User),
             permissions = AdminCheck.Permissions(httpContext.User),
         });
     }

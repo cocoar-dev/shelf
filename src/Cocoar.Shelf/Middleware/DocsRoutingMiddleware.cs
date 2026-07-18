@@ -2,6 +2,7 @@ using System.Text.RegularExpressions;
 using Cocoar.Configuration.Reactive;
 using Cocoar.Shelf.Models;
 using Cocoar.Shelf.Services;
+using Cocoar.Shelf.Services.Access;
 using Microsoft.AspNetCore.StaticFiles;
 
 namespace Cocoar.Shelf.Middleware;
@@ -10,6 +11,7 @@ public partial class DocsRoutingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly IManifestService _manifestService;
+    private readonly IProductConfigService _productConfig;
     private readonly BasePathDetector _basePathDetector;
     private readonly IReactiveConfig<ShelfOptions> _config;
     private readonly AccessLogChannel? _accessLog;
@@ -19,12 +21,14 @@ public partial class DocsRoutingMiddleware
     public DocsRoutingMiddleware(
         RequestDelegate next,
         IManifestService manifestService,
+        IProductConfigService productConfig,
         BasePathDetector basePathDetector,
         IReactiveConfig<ShelfOptions> config,
         AccessLogChannel? accessLog = null)
     {
         _next = next;
         _manifestService = manifestService;
+        _productConfig = productConfig;
         _basePathDetector = basePathDetector;
         _config = config;
         _accessLog = accessLog;
@@ -62,6 +66,14 @@ public partial class DocsRoutingMiddleware
         if (!Directory.Exists(productDir))
         {
             await _next(context);
+            return;
+        }
+
+        // Access control v2: restricted products are gated before anything is served (HTML and assets).
+        var productConfig = await _productConfig.GetConfigAsync(product);
+        if (productConfig?.Restricted == true && !await HasReadAccessAsync(context, product))
+        {
+            DenyRestricted(context);
             return;
         }
 
@@ -177,6 +189,45 @@ public partial class DocsRoutingMiddleware
             Referer = context.Request.Headers.Referer.ToString(),
             AcceptLanguage = context.Request.Headers.AcceptLanguage.ToString()
         });
+    }
+
+    private static async Task<bool> HasReadAccessAsync(HttpContext context, string product)
+    {
+        var resolver = context.RequestServices.GetRequiredService<IAccessResolver>();
+        var grants = await resolver.ResolveAsync(context.User);
+        return grants.CanRead(product);
+    }
+
+    // Restricted product, no read grant. Decided (concept): authenticated-but-unauthorized → 404 (no
+    // existence leak); anonymous HTML navigation → login redirect (silent SSO makes it painless);
+    // anonymous asset fetch → 401.
+    private static void DenyRestricted(HttpContext context)
+    {
+        if (context.User.Identity?.IsAuthenticated == true)
+        {
+            context.Response.StatusCode = 404;
+            return;
+        }
+
+        if (WantsHtml(context.Request))
+        {
+            var returnUrl = context.Request.PathBase + context.Request.Path + context.Request.QueryString;
+            context.Response.Redirect($"{context.Request.PathBase}/login?returnUrl={Uri.EscapeDataString(returnUrl)}");
+        }
+        else
+        {
+            context.Response.StatusCode = 401;
+        }
+    }
+
+    // Page navigations send Accept: text/html; asset fetches (js/css/img) don't. Fall back to the path
+    // extension so an extensionless page path still redirects to login rather than returning 401.
+    private static bool WantsHtml(HttpRequest request)
+    {
+        if (request.Headers.Accept.ToString().Contains("text/html", StringComparison.OrdinalIgnoreCase))
+            return true;
+        var ext = Path.GetExtension(request.Path.Value ?? "");
+        return string.IsNullOrEmpty(ext) || ext.Equals(".html", StringComparison.OrdinalIgnoreCase);
     }
 
     private static bool IsTextContent(string contentType) =>
