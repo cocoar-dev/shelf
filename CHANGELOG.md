@@ -4,7 +4,7 @@ All notable changes to Shelf will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
-## [2.0.0] — Unreleased
+## [2.0.0] — 2026-07-18
 
 Shelf 2.0 turns the standalone file-only server into a modgud-federated,
 PostgreSQL-backed platform with a full admin UI. Docs serving is unchanged;
