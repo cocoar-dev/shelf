@@ -1,12 +1,18 @@
+# Build stages run on the builder's native platform ($BUILDPLATFORM): the
+# publish output (framework-dependent IL) and the Vite dist are architecture-
+# neutral, so only the runtime stage below is instantiated per target platform.
+# This keeps multi-arch builds (amd64 + arm64) from running dotnet/pnpm under
+# QEMU emulation.
+
 # ── Stage 1: Build backend ──────────────────────────────────────────
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS backend-build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0 AS backend-build
 WORKDIR /src
 COPY src/ ./
 RUN dotnet restore Cocoar.Shelf/Cocoar.Shelf.csproj
 RUN dotnet publish Cocoar.Shelf/Cocoar.Shelf.csproj -c Release -o /app --no-restore
 
 # ── Stage 2: Build Admin UI ─────────────────────────────────────────
-FROM node:22-slim AS frontend-build
+FROM --platform=$BUILDPLATFORM node:22-slim AS frontend-build
 ENV CI=true
 RUN corepack enable && corepack prepare pnpm@10.13.1 --activate
 WORKDIR /src
