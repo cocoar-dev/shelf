@@ -34,6 +34,7 @@ const form = ref({
   description: '',
   source: 'upload',
   visibility: 'public',
+  restricted: false,
   tags: [] as string[],
   showWhenEmpty: false,
 });
@@ -78,6 +79,7 @@ async function loadProduct() {
     description: product.description ?? '',
     source: product.source,
     visibility: product.visibility,
+    restricted: product.restricted ?? false,
     tags: [...(product.tags ?? [])],
     showWhenEmpty: product.showWhenEmpty ?? false,
   };
@@ -137,6 +139,7 @@ async function save() {
       description: form.value.description || undefined,
       source: form.value.source || undefined,
       visibility: form.value.visibility,
+      restricted: form.value.restricted,
       tags: form.value.tags,
       showWhenEmpty: form.value.showWhenEmpty,
       apiKey,
@@ -249,6 +252,19 @@ async function onDeleteVersion(version: string) {
                 v-model="form.showWhenEmpty"
                 label="Show on landing page even without published versions"
               />
+
+              <div class="access-block">
+                <CoarCheckbox
+                  v-model="form.restricted"
+                  label="Restricted — require a group read grant to view"
+                />
+                <p class="section-desc access-desc">
+                  Restricted products are hidden from users without access and return 404 on
+                  unauthorized requests. Grant read access to a group on the
+                  <a href="/admin/groups" target="_blank">Groups</a> page.
+                  Orthogonal to visibility (a product can be preview + restricted).
+                </p>
+              </div>
             </form>
           </template>
         </CoarTab>
@@ -446,6 +462,21 @@ async function onDeleteVersion(version: string) {
 
 .mt-2 { margin-top: 8px; }
 .mb-3 { margin-bottom: 12px; }
+
+.access-block {
+  border-top: 1px solid var(--coar-border-neutral-tertiary);
+  padding-top: 12px;
+}
+
+.access-desc {
+  margin: 8px 0 0 26px;
+}
+
+.access-desc a {
+  color: var(--coar-text-accent-primary);
+  text-decoration: none;
+}
+.access-desc a:hover { text-decoration: underline; }
 
 .tag-input-row {
   display: flex;

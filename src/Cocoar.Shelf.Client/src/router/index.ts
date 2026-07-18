@@ -32,6 +32,21 @@ export const router = createRouter({
             ],
           },
         },
+        {
+          path: 'groups',
+          component: () => import('@/views/groups/GroupListView.vue'),
+          meta: {
+            admin: true,
+            routedFragments: [
+              {
+                type: 'modal',
+                path: ':id',
+                component: () => import('@/views/groups/GroupFormModal.vue'),
+                overlayOptions: { size: { height: '80vh' } },
+              },
+            ],
+          },
+        },
         { path: 'profile', component: () => import('@/views/ProfileView.vue') },
         {
           path: 'analytics',

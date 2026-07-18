@@ -33,6 +33,9 @@ public static partial class UserEndpoints
             .OrderBy(u => u.UserName)
             .ToListAsync(ct);
 
+        // Group memberships per user (email ∪ materialized auto ids) for the memberships column.
+        var groups = (await session.Query<Group>().ToListAsync(ct)).Where(g => !g.IsDeleted).ToList();
+
         return Results.Ok(users.Select(u => new
         {
             u.Id,
@@ -40,9 +43,19 @@ public static partial class UserEndpoints
             u.DisplayName,
             u.Email,
             u.IsActive,
-            u.CreatedAt
+            u.CreatedAt,
+            Groups = groups
+                .Where(g => IsMember(g, u))
+                .Select(g => g.Name)
+                .Order()
+                .ToArray(),
+            IsAdminViaGroup = groups.Any(g => g.IsAdminGroup && IsMember(g, u)),
         }));
     }
+
+    private static bool IsMember(Group group, UserDocument user) =>
+        (user.Email is not null && group.MemberEmails.Any(m => string.Equals(m, user.Email, StringComparison.OrdinalIgnoreCase)))
+        || group.AutoMemberUserIds.Contains(user.Id);
 
     private static async Task<IResult> SetActive(
         Guid id,

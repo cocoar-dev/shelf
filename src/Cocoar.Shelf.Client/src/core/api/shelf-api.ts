@@ -1,5 +1,8 @@
 import { http } from './http';
-import type { Product, ProductVersions, CreateProductRequest, UpdateProductRequest } from '../models/shelf.models';
+import type {
+  Product, ProductVersions, CreateProductRequest, UpdateProductRequest,
+  GroupSummary, GroupDetail, GroupUpsertRequest, ScriptTestResult,
+} from '../models/shelf.models';
 
 export const shelfApi = {
   getProducts: () => http.get<Product[]>('/products'),
@@ -15,4 +18,14 @@ export const shelfApi = {
     http.delete<void>(`/products/${product}/versions/${version}`),
   uploadVersion: (product: string, version: string, file: File | Blob) =>
     http.upload<void>(`/products/${product}/versions/${version}`, file),
+
+  // Access Control v2: groups (admin-only)
+  getGroups: () => http.get<GroupSummary[]>('/groups'),
+  getGroup: (id: string) => http.get<GroupDetail>(`/groups/${id}`),
+  createGroup: (req: GroupUpsertRequest) => http.post<GroupSummary>('/groups', req),
+  updateGroup: (id: string, req: GroupUpsertRequest) => http.put<GroupSummary>(`/groups/${id}`, req),
+  deleteGroup: (id: string) => http.delete<void>(`/groups/${id}`),
+  recalculateGroups: () => http.post<{ ok: boolean }>('/groups/recalculate'),
+  testGroupScript: (req: { script: string; userId?: string; email?: string }) =>
+    http.post<ScriptTestResult>('/groups/test-script', req),
 };

@@ -124,6 +124,13 @@ function logout() {
         />
         <CoarSidebarItem
           v-if="authStore.user?.isAdmin"
+          icon="users-round"
+          label="Groups"
+          :active="route.path.startsWith('/admin/groups')"
+          @click="router.push('/admin/groups')"
+        />
+        <CoarSidebarItem
+          v-if="authStore.user?.isAdmin"
           icon="bar-chart-3"
           label="Analytics"
           :active="route.path.startsWith('/admin/analytics')"
