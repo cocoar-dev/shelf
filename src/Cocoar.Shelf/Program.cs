@@ -1,3 +1,4 @@
+using System.Globalization;
 using Cocoar.Configuration.AspNetCore;
 using Cocoar.Configuration.DI.Extensions;
 using Cocoar.Configuration.Providers;
@@ -8,7 +9,6 @@ using Cocoar.Shelf.Identity;
 using Cocoar.Shelf.Middleware;
 using Cocoar.Shelf.Models;
 using Cocoar.Shelf.Services;
-using System.Globalization;
 using Marten;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;

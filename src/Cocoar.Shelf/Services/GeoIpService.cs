@@ -1,6 +1,6 @@
+using System.Globalization;
 using System.IO.Compression;
 using System.Net;
-using System.Globalization;
 using Cocoar.Configuration.Reactive;
 using MaxMind.GeoIP2;
 
