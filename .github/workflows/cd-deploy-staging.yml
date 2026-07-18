@@ -80,9 +80,12 @@ jobs:
         with:
           node-version: 22
 
+      - name: Install pnpm
+        run: corepack enable && corepack prepare pnpm@10.13.1 --activate
+
       - name: Build Admin UI
         working-directory: ./src/Cocoar.Shelf.Client
-        run: npm ci && npm run build
+        run: pnpm install --frozen-lockfile && pnpm run build
 
       - name: Restore dependencies
         run: dotnet restore Cocoar.Shelf.slnx
