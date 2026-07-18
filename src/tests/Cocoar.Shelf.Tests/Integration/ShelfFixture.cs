@@ -13,6 +13,7 @@ public class ShelfFixture : WebApplicationFactory<Program>, IAsyncLifetime
 {
     public string DocsRoot { get; private set; } = null!;
     public string ConfigRoot { get; private set; } = null!;
+    private string _webRoot = null!;
     public string ApiKey => "test-api-key";
 
     private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder()
@@ -29,6 +30,15 @@ public class ShelfFixture : WebApplicationFactory<Program>, IAsyncLifetime
 
         Directory.CreateDirectory(DocsRoot);
         Directory.CreateDirectory(Path.Combine(ConfigRoot, "products"));
+
+        // The landing page and admin SPA fallback serve wwwroot/index.html. The real
+        // bundle only exists after a client build (not in the backend-only CI job), so
+        // the tests run against their own web root with a stub — they assert routing
+        // and fallback behavior, not bundle content.
+        _webRoot = Path.Combine(baseDir, "wwwroot");
+        Directory.CreateDirectory(_webRoot);
+        File.WriteAllText(Path.Combine(_webRoot, "index.html"),
+            "<!DOCTYPE html><html><head><title>Shelf</title></head><body><div id=\"app\"></div></body></html>");
 
         await _postgres.StartAsync();
 
@@ -63,6 +73,7 @@ public class ShelfFixture : WebApplicationFactory<Program>, IAsyncLifetime
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Production");
+        builder.UseWebRoot(_webRoot);
     }
 
     /// <summary>Signs in via the test-auth seam and returns a cookie-carrying client.</summary>
