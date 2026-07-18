@@ -81,10 +81,9 @@ export default defineConfig({
 
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
-      // llms.txt (the summary), NOT llms-full.txt — modgud convention. Note: VitePress
-      // skips withBase for .txt targets at hydration, so under /shelf/<version>/ the
-      // click lands on the ROOT /llms.txt — which is Shelf's product index (useful);
-      // a root /llms-full.txt would 404, which is why that variant must not come back.
+      // llms.txt (the compact summary/index), NOT llms-full.txt — modgud convention:
+      // never hand out the full bundle by default (it gets huge on larger repos);
+      // the index links onward to everything, including llms-full.txt.
       { text: 'LLM Docs', link: '/llms.txt', target: '_blank' },
     ],
 
