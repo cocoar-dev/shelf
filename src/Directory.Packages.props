@@ -6,20 +6,20 @@
 
   <ItemGroup>
     <!-- Runtime -->
-    <PackageVersion Include="Cocoar.Configuration.AspNetCore" Version="5.0.0-beta.2" />
-    <PackageVersion Include="Cocoar.FileSystem" Version="2.2.0" />
-    <PackageVersion Include="Marten" Version="8.29.3" />
+    <PackageVersion Include="Cocoar.Configuration.AspNetCore" Version="5.0.0" />
+    <PackageVersion Include="Cocoar.FileSystem" Version="2.3.0" />
+    <PackageVersion Include="Marten" Version="8.37.4" />
     <PackageVersion Include="MaxMind.GeoIP2" Version="5.4.1" />
     <PackageVersion Include="Serilog.AspNetCore" Version="10.0.0" />
   </ItemGroup>
 
   <ItemGroup>
     <!-- Testing -->
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.5" />
-    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
-    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.12.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.10" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="17.14.1" />
+    <PackageVersion Include="Testcontainers.PostgreSql" Version="4.13.0" />
     <PackageVersion Include="xunit" Version="2.9.3" />
-    <PackageVersion Include="xunit.runner.visualstudio" Version="3.0.2" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
     <PackageVersion Include="coverlet.collector" Version="6.0.4" />
   </ItemGroup>
 
