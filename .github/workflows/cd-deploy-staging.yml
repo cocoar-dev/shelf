@@ -18,6 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.build_version.outputs.VERSION }}
+      semver: ${{ steps.gv.outputs.SemVer }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v6
@@ -41,11 +42,10 @@ jobs:
           BASE="${{ steps.gv.outputs.MajorMinorPatch }}-${{ steps.gv.outputs.PreReleaseLabel }}"
           N="${{ steps.gv.outputs.CommitsSinceVersionSource }}"
           VERSION="$BASE.$N"
-
           echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
           echo "Calculated version: $VERSION"
 
-  build:
+  test:
     name: Build & Test
     needs: version
     runs-on: ubuntu-latest
@@ -75,43 +75,19 @@ jobs:
             --password ${{ secrets.PERSONAL_PACKAGES_TOKEN }} \
             --store-password-in-clear-text
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install pnpm
-        run: corepack enable && corepack prepare pnpm@10.13.1 --activate
-
-      - name: Build Admin UI
-        working-directory: ./src/Cocoar.Shelf.Client
-        run: pnpm install --frozen-lockfile && pnpm run build
-
-      - name: Restore dependencies
-        run: dotnet restore Cocoar.Shelf.slnx
+      - name: Restore & build backend
+        run: |
+          dotnet restore Cocoar.Shelf.slnx
+          dotnet build Cocoar.Shelf.slnx -c Release --no-restore -p:Version=${{ needs.version.outputs.version }}
         working-directory: ./src
 
-      - name: Build
-        run: dotnet build Cocoar.Shelf.slnx -c Release --no-restore -p:Version=${{ needs.version.outputs.version }}
-        working-directory: ./src
-
-      - name: Test
+      - name: Test backend
         run: dotnet test Cocoar.Shelf.slnx -c Release --no-build --verbosity normal
         working-directory: ./src
 
-      - name: Publish
-        run: dotnet publish Cocoar.Shelf/Cocoar.Shelf.csproj -c Release --no-build -o ../publish
-        working-directory: ./src
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: shelf-app
-          path: ./publish
-
   deploy:
-    name: Deploy to Staging
-    needs: [version, build]
+    name: Build Image & Push
+    needs: [version, test]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -124,20 +100,8 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
-      - name: Download artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: shelf-app
-          path: ./docker/app
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -145,7 +109,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -153,12 +117,11 @@ jobs:
             type=raw,value=develop
             type=raw,value=${{ needs.version.outputs.version }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v7
+      - name: Build and push Docker image (multi-stage)
+        uses: docker/build-push-action@v5
         with:
-          context: ./docker
+          context: .
           file: ./docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

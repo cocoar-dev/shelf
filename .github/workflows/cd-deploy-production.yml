@@ -69,42 +69,15 @@ jobs:
             --password ${{ secrets.PERSONAL_PACKAGES_TOKEN }} \
             --store-password-in-clear-text
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install pnpm
-        run: corepack enable && corepack prepare pnpm@10.13.1 --activate
-
-      - name: Build Admin UI
-        working-directory: ./src/Cocoar.Shelf.Client
-        run: pnpm install --frozen-lockfile && pnpm run build
-
-      - name: Restore dependencies
-        run: dotnet restore Cocoar.Shelf.slnx
+      - name: Restore, build & test
+        run: |
+          dotnet restore Cocoar.Shelf.slnx
+          dotnet build Cocoar.Shelf.slnx -c Release --no-restore -p:Version=${{ needs.validate-version.outputs.version }}
+          dotnet test Cocoar.Shelf.slnx -c Release --no-build --verbosity normal
         working-directory: ./src
-
-      - name: Build
-        run: dotnet build Cocoar.Shelf.slnx -c Release --no-restore -p:Version=${{ needs.validate-version.outputs.version }}
-        working-directory: ./src
-
-      - name: Test
-        run: dotnet test Cocoar.Shelf.slnx -c Release --no-build --verbosity normal
-        working-directory: ./src
-
-      - name: Publish
-        run: dotnet publish Cocoar.Shelf/Cocoar.Shelf.csproj -c Release --no-build -o ../publish
-        working-directory: ./src
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v7
-        with:
-          name: shelf-app
-          path: ./publish
 
   deploy:
-    name: Deploy to Production
+    name: Build Image & Push
     needs: [validate-version, build]
     runs-on: ubuntu-latest
     permissions:
@@ -120,20 +93,8 @@ jobs:
         with:
           ref: ${{ github.event.release.tag_name }}
 
-      - name: Download artifacts
-        uses: actions/download-artifact@v8
-        with:
-          name: shelf-app
-          path: ./docker/app
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v3
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v4
+        uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
@@ -141,7 +102,7 @@ jobs:
 
       - name: Extract metadata
         id: meta
-        uses: docker/metadata-action@v6
+        uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
@@ -151,12 +112,11 @@ jobs:
             type=semver,pattern={{major}}.{{minor}},value=${{ needs.validate-version.outputs.version }}
             type=semver,pattern={{major}},value=${{ needs.validate-version.outputs.version }}
 
-      - name: Build and push Docker image
-        uses: docker/build-push-action@v7
+      - name: Build and push Docker image (multi-stage)
+        uses: docker/build-push-action@v5
         with:
-          context: ./docker
+          context: .
           file: ./docker/Dockerfile
-          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

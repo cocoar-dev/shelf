@@ -1,15 +1,42 @@
-**/.git
-**/.vs
-**/.idea
+# Build context is the repo root for `docker build -f docker/Dockerfile .`.
+# Keep the context lean and the image deterministic — no developer artifacts.
+
+# Build outputs (re-created in the Docker stages)
 **/bin
 **/obj
 **/artifacts
+**/.vs
+**/.vscode
+**/.idea
+
+# Admin UI is built in its own stage — never bake a locally built copy
+src/Cocoar.Shelf/wwwroot/
+**/dist/
+
+# Node / pnpm
 **/node_modules
+**/.pnpm-store/
+
+# VitePress (public docs are deployed separately, not part of the image)
+website/
+**/.vitepress/cache/
+**/.vitepress/dist/
+
+# Test artifacts
+**/TestResults/
+**/coverage*
+
+# Local dev environment
+dev/
 **/.local
 **/local
+
+# Git + editor noise
+**/.git
+.github
 **/*.md
-**/coverage*
 LICENSE
 .editorconfig
 .gitignore
 docker-compose.yml
+docker-compose.dev.yml
