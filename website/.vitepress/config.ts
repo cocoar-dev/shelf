@@ -68,9 +68,13 @@ export default defineConfig({
 
     siteTitle: 'Shelf',
 
+    // No nav link to /llms-full.txt (modgud parity): VitePress skips withBase for
+    // non-HTML targets at hydration, so the link would point at the site root and
+    // break under /shelf/<version>/. Discovery paths that DO work everywhere:
+    // the rel=alternate head links, the plugin's per-page footer notice, and the
+    // LLM Documentation guide page.
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
-      { text: 'LLM Docs', link: '/llms-full.txt', target: '_blank' },
     ],
 
     sidebar: {
