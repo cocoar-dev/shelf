@@ -46,19 +46,16 @@ public class DatabaseOptions
 /// </summary>
 public class ModgudOptions
 {
-    /// <summary>Realm host root (no realm path segment — modgud routes by Host header). Also the
-    /// JWKS authority and base for <c>/connect/token</c> + <c>/connect/userinfo</c>.</summary>
+    /// <summary>The modgud host Shelf talks to (no realm path segment — modgud routes by Host
+    /// header): OIDC authority for discovery, authorize, token and userinfo. May be the Shelf
+    /// App-Origin subdomain (e.g. <c>https://shelf.auth.cocoar.dev</c>) for the branded login UI —
+    /// modgud serves the full OAuth surface there and anchors the token issuer to the realm's
+    /// canonical domain, which the handler picks up from discovery (ADR-0011).</summary>
     public string Issuer { get; set; } = "https://auth.cocoar.dev";
 
     /// <summary>The registered OAuth API name == the <c>resource_access</c> key carrying Shelf's
     /// roles/permissions.</summary>
     public string Audience { get; set; } = "shelf";
-
-    /// <summary>Shelf's app subdomain on modgud (e.g. <c>https://shelf.auth.cocoar.dev</c>) — the
-    /// browser-facing OIDC hops (authorize + end-session) go there so modgud serves the
-    /// shelf-branded login UI. Token/userinfo/discovery stay on <see cref="Issuer"/> (the app
-    /// subdomain is not its own issuer). Unset = everything on <see cref="Issuer"/>.</summary>
-    public string? AuthBase { get; set; }
 
     /// <summary>Confidential OIDC client for the BFF login broker.</summary>
     public string? WebClientId { get; set; }

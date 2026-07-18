@@ -55,8 +55,9 @@ authorization-code flow (citydiary pattern, code + PKCE):
 `data/configuration.json` (Cocoar.Configuration) + env overrides with `Shelf__` prefix.
 NOTE: the app reads the *build output copy* of the file — config edits need a build.
 
-Key options: `Database.ConnectionString` (**required**), `Modgud.{Issuer,Audience,AuthBase,
-WebClientId,WebClientSecret,AdminPermission,Admins}`, `ApiKey` (bootstrap master key),
+Key options: `Database.ConnectionString` (**required**), `Modgud.{Issuer,Audience,
+WebClientId,WebClientSecret,AdminPermission,Admins}` — `Issuer` may be the App-Origin
+subdomain (branded login, e.g. `https://shelf.auth.cocoar.dev`), `ApiKey` (bootstrap master key),
 `AccessLog.{Enabled,RetentionDays}`, `DocsRoot`, `ConfigRoot`, `PathBase`, `VersionPattern`,
 `MaxUploadSizeBytes`, `TestAuth` (test fixture only).
 

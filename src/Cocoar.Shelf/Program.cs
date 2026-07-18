@@ -159,22 +159,9 @@ if (modgudConfigured)
         // browsers drop over http — use the GET (query) callback + Lax cookies everywhere.
         options.CorrelationCookie.SameSite = SameSiteMode.Lax;
         options.NonceCookie.SameSite = SameSiteMode.Lax;
-
-        // Browser-facing hops go to the app subdomain (AuthBase) when configured — modgud
-        // host-resolves the Shelf App there and serves the shelf-branded login/consent UI.
-        // The issuer stays the realm host, so discovery/token/userinfo are untouched.
-        var authBase = config.Modgud.AuthBase?.Trim().TrimEnd('/');
         options.Events.OnRedirectToIdentityProvider = ctx =>
         {
             ctx.ProtocolMessage.ResponseMode = OpenIdConnectResponseMode.Query;
-            if (!string.IsNullOrEmpty(authBase))
-                ctx.ProtocolMessage.IssuerAddress = $"{authBase}/connect/authorize";
-            return Task.CompletedTask;
-        };
-        options.Events.OnRedirectToIdentityProviderForSignOut = ctx =>
-        {
-            if (!string.IsNullOrEmpty(authBase))
-                ctx.ProtocolMessage.IssuerAddress = $"{authBase}/connect/logout";
             return Task.CompletedTask;
         };
 
