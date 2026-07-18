@@ -9,8 +9,8 @@ export interface AuthUser {
   permissions: string[];
 }
 
-// Login is federated to modgud: the backend brokers the email-code flow server-to-server and the
-// httpOnly cookie is the whole session — no tokens, no MFA branches in the client.
+// Login is federated to modgud via the OIDC code flow: navigating to /login challenges the IdP,
+// the backend mints the httpOnly cookie on callback — no tokens and no credential UI in the client.
 export const useAuthStore = defineStore('auth', () => {
   const isAuthenticated = ref(false);
   const userName = ref<string | null>(null);
@@ -36,42 +36,17 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function requestLoginCode(email: string): Promise<void> {
-    const response = await fetch('/_api/auth/otp/request', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email }),
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error ?? 'Failed to send code');
-    }
+  /// Full page navigation: the server ends the app cookie AND the modgud session
+  /// (otherwise the next /login would silently sign right back in), then lands on "/".
+  function logout(): void {
+    clearAuth();
+    window.location.href = '/logout';
   }
 
-  async function verifyLoginCode(email: string, code: string): Promise<void> {
-    const response = await fetch('/_api/auth/otp/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ email, code }),
-    });
-
-    if (!response.ok) {
-      const data = await response.json();
-      throw new Error(data.error ?? 'Invalid or expired code');
-    }
-
-    await checkSession();
-  }
-
-  async function logout(): Promise<void> {
-    try {
-      await fetch('/_api/auth/logout', { method: 'POST', credentials: 'include' });
-    } finally {
-      clearAuth();
-    }
+  /// Full page navigation to the OIDC challenge; returns to `returnTo` after the callback.
+  function login(returnTo?: string): void {
+    const target = returnTo ?? window.location.pathname + window.location.search + window.location.hash;
+    window.location.href = '/login?returnUrl=' + encodeURIComponent(target);
   }
 
   function clearAuth() {
@@ -85,8 +60,7 @@ export const useAuthStore = defineStore('auth', () => {
     userName,
     user,
     checkSession,
-    requestLoginCode,
-    verifyLoginCode,
+    login,
     logout,
   };
 });

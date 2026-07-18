@@ -102,15 +102,29 @@ public class AuthApiTests
     }
 
     [Fact]
-    public async Task OtpVerify_Returns401_WhenModgudUnreachable()
+    public async Task LoginPage_IsNotMapped_WithoutModgudClient()
     {
-        // No modgud runs in the suite — a broker failure must surface as a clean 401, not a 500.
+        // The OIDC challenge endpoint only exists when a modgud web client is configured —
+        // the test host runs without one (auth comes through the test seam).
         var client = _fixture.CreateClient();
 
-        var response = await client.PostAsJsonAsync("/_api/auth/otp/verify",
-            new { email = "someone@shelf.test", code = "123456" });
+        var response = await client.GetAsync("/login");
 
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        // Unmapped → the SPA fallback serves the app shell instead of a challenge redirect.
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("text/html", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task LogoutPage_EndsSession_AndRedirectsHome()
+    {
+        var client = await _fixture.CreateSignedInClientAsync("browser-logout@shelf.test");
+
+        var response = await client.GetAsync("/logout");   // auto-follows the redirect to /
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var me = await client.GetAsync("/_api/auth/me");
+        Assert.Equal(HttpStatusCode.Unauthorized, me.StatusCode);
     }
 
     [Fact]

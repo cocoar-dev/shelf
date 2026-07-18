@@ -28,13 +28,18 @@ Local dev quickstart (modgud + mailpit stack, seed, test logins): `dev/README.md
 - Products, users, settings and the access log live in PostgreSQL (schema `shelf`);
   JSON files in `{ConfigRoot}/products/` are imported once at startup (DB wins)
 
-### Authentication (modgud federation)
+### Authentication (modgud federation, OIDC code flow + SSO)
 
-All human auth is federated to **modgud** (Cocoar's OIDC IdP) — the amzettel BFF pattern:
+All human auth is federated to **modgud** (Cocoar's OIDC IdP) — BFF with the standard
+authorization-code flow (citydiary pattern, code + PKCE):
 
-- Login = email + one-time code; the backend brokers modgud's `urn:cocoar:otp` grant
-  server-to-server (`Identity/ModgudLoginBroker`) and mints the `shelf.auth` cookie.
-  The browser never reaches modgud. No local passwords/2FA.
+- `GET /login` challenges modgud; the callback (`/signin-oidc`) JIT-provisions the user and
+  mints the `shelf.auth` cookie (`OnTicketReceived` swaps in the Identity principal). Tokens
+  stay server-side (`SaveTokens` only for the logout `id_token_hint`). An existing modgud
+  browser session logs in silently → SSO across Cocoar apps. `GET /logout` ends cookie AND
+  modgud session. Unauthenticated `/admin` auto-challenges; the landing page has a Sign-in
+  button. Client `shelf-web` needs: grant `authorization_code`, redirect `/signin-oidc` +
+  `/signout-callback-oidc` URIs, all six scopes, Access Token Type JWT.
 - Thin local user layer: `UserDocument` (Id == modgud `sub`), JIT-created at login.
   ASP.NET Identity plumbing exists only for the cookie/SecurityStamp pipeline and the
   test seam (`/_api/test/signin`, mapped only when `ShelfOptions.TestAuth`).
@@ -68,7 +73,7 @@ WebClientId,WebClientSecret,AdminPermission,Admins}`, `ApiKey` (bootstrap master
 Backend (`src/Cocoar.Shelf/`):
 - `Program.cs` — startup, Marten schema, auth wiring, middleware pipeline
 - `ShelfOptions.cs` — all configuration (incl. `ModgudOptions`)
-- `Identity/` — ModgudLoginBroker, ModgudUserProvisioning, ModgudClaimsTransformation,
+- `Identity/` — ModgudUserProvisioning, ModgudClaimsTransformation,
   RbacCookiePreservation, AdminCheck, MartenUserStore
 - `Endpoints/` — ApiEndpoints (products/versions), AuthEndpoints, SettingsEndpoints,
   UserEndpoints, AnalyticsEndpoints, TestAuthEndpoints, ApiKeyFilter

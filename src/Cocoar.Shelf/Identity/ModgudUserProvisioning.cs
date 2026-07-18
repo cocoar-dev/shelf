@@ -45,25 +45,29 @@ public static class ModgudUserProvisioning
     }
 
     /// <summary>
-    /// Signs the user in via the application cookie, stamping the raw modgud <c>resource_access</c>
-    /// JSON (when present) onto the cookie identity as a string claim so the per-request
-    /// <see cref="ModgudClaimsTransformation"/> flattens RBAC (admin) claims. Falls back to the plain
-    /// <c>SignInManager.SignInAsync</c> when there's nothing to add.
+    /// Builds the Identity cookie principal (carries the SecurityStamp), stamping the raw modgud
+    /// <c>resource_access</c> JSON (when present) onto it as a string claim so the per-request
+    /// <see cref="ModgudClaimsTransformation"/> flattens RBAC (admin) claims.
     /// </summary>
-    public static async Task SignInWithRbacAsync(HttpContext ctx, SignInManager<UserDocument> signIn,
-        UserDocument user, string? resourceAccess)
+    public static async Task<ClaimsPrincipal> CreatePrincipalWithRbacAsync(
+        SignInManager<UserDocument> signIn, UserDocument user, string? resourceAccess)
     {
-        if (string.IsNullOrWhiteSpace(resourceAccess))
-        {
-            await signIn.SignInAsync(user, isPersistent: true);
-            return;
-        }
         var principal = await signIn.CreateUserPrincipalAsync(user);
-        if (principal.Identity is ClaimsIdentity identity
+        if (!string.IsNullOrWhiteSpace(resourceAccess)
+            && principal.Identity is ClaimsIdentity identity
             && identity.FindFirst(ModgudClaimsTransformation.ResourceAccessClaimType) is null)
         {
             identity.AddClaim(new Claim(ModgudClaimsTransformation.ResourceAccessClaimType, resourceAccess));
         }
+        return principal;
+    }
+
+    /// <summary>Signs the user in via the application cookie with the RBAC-stamped principal —
+    /// used by the integration tests' sign-in seam.</summary>
+    public static async Task SignInWithRbacAsync(HttpContext ctx, SignInManager<UserDocument> signIn,
+        UserDocument user, string? resourceAccess)
+    {
+        var principal = await CreatePrincipalWithRbacAsync(signIn, user, resourceAccess);
         await ctx.SignInAsync(IdentityConstants.ApplicationScheme, principal,
             new AuthenticationProperties { IsPersistent = true });
     }

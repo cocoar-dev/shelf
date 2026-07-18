@@ -52,9 +52,8 @@ function openUserMenu(event: MouseEvent) {
   userMenu.open({ clientX: rect.right, clientY: rect.bottom + 4 } as MouseEvent);
 }
 
-async function logout() {
-  await authStore.logout();
-  router.push('/login');
+function logout() {
+  authStore.logout(); // full page navigation — server ends cookie + modgud session
 }
 </script>
 

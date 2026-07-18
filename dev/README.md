@@ -17,16 +17,16 @@ docker compose -f docker-compose.dev.yml up -d
 docker exec shelf-dev-modgud dotnet Modgud.Api.dll recover bootstrap-admin \
   --email admin@shelf.local --username admin --password 'Passw0rd!Admin' --realm system
 
-# 3. Seed the shelf App / client / test users (idempotent), then restart for rate limits.
+# 3. Seed the shelf App / OIDC client / test users (idempotent; re-run patches the client).
 node dev/seed-modgud.mjs
-docker restart shelf-dev-modgud
 
 # 4. Backend (:8080) + client build.
 cd src/Cocoar.Shelf.Client && pnpm run build
 cd ../Cocoar.Shelf && dotnet run
 ```
 
-Log in as **`bwi@doob.at`** (admin) or `tester@shelf.local` — OTP codes land in
-**Mailpit → http://localhost:8025**.
+Login is the OIDC code flow: `/admin` (or the landing page's *Sign in*) redirects to the
+local modgud login page — sign in as **`bwi`** (admin allowlist) or `tester`, password
+`Passw0rd!Test`. Email flows land in **Mailpit → http://localhost:8025**.
 
 Integration tests need no modgud: `dotnet test ./src` (Testcontainers PostgreSQL + test seam).

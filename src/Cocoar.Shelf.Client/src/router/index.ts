@@ -12,11 +12,6 @@ export const router = createRouter({
       meta: { public: true },
     },
     {
-      path: '/login',
-      component: () => import('@/views/LoginView.vue'),
-      meta: { public: true },
-    },
-    {
       path: '/admin',
       component: () => import('@/layouts/AdminLayout.vue'),
       children: [
@@ -69,11 +64,11 @@ router.beforeEach(async (to) => {
     await auth.checkSession();
   }
 
+  // /login is a SERVER route (OIDC challenge) — leave the SPA entirely. With a modgud browser
+  // session this signs in silently and returns; without one, modgud shows its login page.
   if (!to.meta.public && !auth.isAuthenticated) {
-    return '/login';
-  }
-  if (to.path === '/login' && auth.isAuthenticated) {
-    return '/admin';
+    auth.login(pathBase + to.fullPath);
+    return false;
   }
   // The server is the real gate (Admin policy); this only spares non-admins a broken page.
   if (to.matched.some(r => r.meta.admin) && !auth.user?.isAdmin) {

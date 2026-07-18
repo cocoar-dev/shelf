@@ -11,7 +11,7 @@ namespace Cocoar.Shelf.Identity;
 ///
 /// <para>In-repo port of the amzettel/modgud client transformation. Source of the data: a
 /// <c>resource_access</c> string-typed claim whose value is the raw JSON object, stamped onto the
-/// cookie identity at broker-login (<see cref="ModgudLoginBroker"/>). The IdP pre-expands bypass
+/// cookie identity at OIDC sign-in (captured from the UserInfo response). The IdP pre-expands bypass
 /// tiers (<c>realm:admin</c> / <c>&lt;r&gt;:admin</c>) before emission, so this is a pure flatten —
 /// exact-match against the <c>"permission"</c> claims downstream is sufficient. Idempotent: a second
 /// pass on the same identity does not duplicate claims.</para>

@@ -9,6 +9,7 @@
     <PackageReference Include="Cocoar.FileSystem" />
     <PackageReference Include="Marten" />
     <PackageReference Include="MaxMind.GeoIP2" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
     <PackageReference Include="Serilog.AspNetCore" />
   </ItemGroup>
 

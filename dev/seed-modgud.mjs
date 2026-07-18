@@ -2,11 +2,12 @@
 /**
  * Seeds a local modgud IdP with everything shelf needs to federate locally:
  * the `shelf` App (+ shelf:admin permission) + audience + scope, the confidential
- * `shelf-web` web-broker client with the urn:cocoar:otp grant, the test users, and
- * the realm-level NativeGrants flag plus relaxed OTP rate limits.
+ * `shelf-web` client for the OIDC authorization-code flow (code + PKCE, redirect
+ * URIs for :8080 and the vite dev server :5173), and the test users.
  *
- * Idempotent — re-running skips entities that already exist by natural key. The
- * web client secret is FIXED (dev only) so shelf's config stays stable across
+ * Idempotent — re-running skips entities that already exist by natural key and
+ * patches the client's grants/redirect URIs (OTP→code-flow migration). The web
+ * client secret is FIXED (dev only) so shelf's config stays stable across
  * re-seeds; modgud is told to use it verbatim.
  *
  *   node dev/seed-modgud.mjs
@@ -24,7 +25,20 @@ const WEB_CLIENT_ID = 'shelf-web'
 const WEB_CLIENT_SECRET = 'shelf-web-dev-secret'      // dev only — committed on purpose
 const AUDIENCE = 'shelf'
 const SCOPES = ['openid', 'email', 'profile', 'roles', 'permissions', 'shelf']
-const GRANTS = ['urn:cocoar:otp', 'refresh_token']
+const GRANTS = ['authorization_code', 'refresh_token']
+// Backend :8080 direct + through the vite dev proxy; localhost AND 127.0.0.1 (cookies are host-scoped).
+const REDIRECT_URIS = [
+  'http://localhost:8080/signin-oidc',
+  'http://127.0.0.1:8080/signin-oidc',
+  'http://localhost:5173/signin-oidc',
+  'http://127.0.0.1:5173/signin-oidc',
+]
+const POST_LOGOUT_URIS = [
+  'http://localhost:8080/signout-callback-oidc',
+  'http://127.0.0.1:8080/signout-callback-oidc',
+  'http://localhost:5173/signout-callback-oidc',
+  'http://127.0.0.1:5173/signout-callback-oidc',
+]
 const TEST_USERS = [
   { userName: 'tester', email: 'tester@shelf.local', firstname: 'Test', lastname: 'Tester', acronym: 'TT', password: 'Passw0rd!Test' },
   // Allowlisted admin in data/configuration.json (Modgud.Admins) — log in as this one for the admin UI.
@@ -59,20 +73,7 @@ async function main() {
   if (!login.ok) die('admin login (bootstrap the admin first — see dev/README.md)', login)
   console.log(`✓ logged in as ${ADMIN_USER}`)
 
-  // 2. Realm settings: NativeGrants ON (gates the OTP grant) + relaxed auth rate limits so
-  //    iterative local testing doesn't trip the prod-shaped 5-OTP/hour cap. (The live limiter
-  //    caches its partition at boot — restart modgud once after the first seed:
-  //    docker restart shelf-dev-modgud.)
-  const ng = await patch('/api/admin/realm-settings', {
-    NativeGrants: { Enabled: true },
-    AuthRateLimits: {
-      NativeOtp: { PermitLimit: 1000, WindowMinutes: 1 },
-    },
-  })
-  if (!ng.ok) die('enable NativeGrants + relax rate limits', ng)
-  console.log('✓ NativeGrants enabled + auth rate limits relaxed (realm)')
-
-  // 3. App `shelf` (+ shelf:admin permission for RBAC).
+  // 2. App `shelf` (+ shelf:admin permission for RBAC).
   const apps = await get('/api/app')
   if (!apps.ok) die('list apps', apps)
   let app = (apps.body ?? []).find(a => a.Slug === AUDIENCE)
@@ -88,7 +89,7 @@ async function main() {
   }
   const appId = app.Id
 
-  // 4. Scope `shelf` (app-scoped; Resources binds the token audience to `shelf`).
+  // 3. Scope `shelf` (app-scoped; Resources binds the token audience to `shelf`).
   const scopes = await get('/api/admin/oauth/scopes')
   if ((scopes.body?.Items ?? []).some(s => s.Name?.toLowerCase() === AUDIENCE)) console.log(`— scope '${AUDIENCE}' exists`)
   else {
@@ -100,7 +101,7 @@ async function main() {
     console.log(`✓ scope '${AUDIENCE}' created`)
   }
 
-  // 5. OAuthApi `shelf` = the resource server / audience.
+  // 4. OAuthApi `shelf` = the resource server / audience.
   const apis = await get('/api/admin/oauth/apis')
   if ((apis.body?.Items ?? []).some(a => a.Name?.toLowerCase() === AUDIENCE)) console.log(`— api '${AUDIENCE}' exists`)
   else {
@@ -112,16 +113,23 @@ async function main() {
     console.log(`✓ api '${AUDIENCE}' created`)
   }
 
-  // 6. Confidential web-broker client with the urn:cocoar:otp grant.
+  // 5. Confidential BFF client — OIDC authorization-code flow (code + PKCE, server-side exchange).
   const clients = await get('/api/admin/oauth/clients')
   const existingClient = (clients.body?.Items ?? []).find(c => c.ClientId?.toLowerCase() === WEB_CLIENT_ID)
   let effectiveSecret = WEB_CLIENT_SECRET
   if (existingClient) {
-    console.log(`— client '${WEB_CLIENT_ID}' exists (secret unchanged; using the configured dev secret)`)
+    // Re-seed after the OTP→code-flow switch must move old clients along: patch grants/URIs/scopes.
+    const upd = await req('PUT', `/api/admin/oauth/clients/${existingClient.Id}`, {
+      AllowedGrantTypes: GRANTS, RedirectUris: REDIRECT_URIS, PostLogoutRedirectUris: POST_LOGOUT_URIS,
+      Scopes: SCOPES,
+    })
+    if (!upd.ok) die('update client grants/redirect uris', upd)
+    console.log(`✓ client '${WEB_CLIENT_ID}' updated (code flow, redirect URIs; secret unchanged)`)
   } else {
     const r = await post('/api/admin/oauth/clients', {
-      ClientId: WEB_CLIENT_ID, DisplayName: 'Shelf Web (BFF broker)', ClientType: 'confidential',
-      ClientSecret: WEB_CLIENT_SECRET, ConsentType: 'implicit', RedirectUris: [], PostLogoutRedirectUris: [],
+      ClientId: WEB_CLIENT_ID, DisplayName: 'Shelf Web (BFF)', ClientType: 'confidential',
+      ClientSecret: WEB_CLIENT_SECRET, ConsentType: 'implicit',
+      RedirectUris: REDIRECT_URIS, PostLogoutRedirectUris: POST_LOGOUT_URIS,
       Scopes: SCOPES, AllowedGrantTypes: GRANTS, RequireConsent: false, RequireClientSecret: true,
       AccessTokenType: 'Jwt', Enabled: true, AppIds: [appId],
     })
@@ -130,7 +138,7 @@ async function main() {
     console.log(`✓ client '${WEB_CLIENT_ID}' created`)
   }
 
-  // 7. Test users. Native OTP only issues a code to a CONFIRMED user, so create + confirm.
+  // 6. Test users. Native OTP only issues a code to a CONFIRMED user, so create + confirm.
   const users = await get('/api/user')
   const userItems = Array.isArray(users.body) ? users.body : (users.body?.Items ?? [])
   for (const TEST_USER of TEST_USERS) {

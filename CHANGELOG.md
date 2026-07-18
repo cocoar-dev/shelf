@@ -14,7 +14,7 @@ the CI/CD upload API keeps its shape and keys but now lives under `/_api`
 ### Added
 
 - **Admin UI** (`/admin`) — Vue 3 SPA for managing products, versions, users, analytics and settings (desktop-only)
-- **Federated login** — email + one-time code via modgud; the backend brokers the flow server-to-server, the browser never leaves Shelf, no local passwords
+- **Federated login with SSO** — standard OIDC authorization-code flow (code + PKCE) against modgud; unauthenticated `/admin` visits challenge automatically, the landing page gets a *Sign in* button, and an existing modgud browser session signs in silently across Cocoar apps. Credentials (password, email code, passkey) live entirely on modgud's login page — no local passwords. Logout ends both the Shelf cookie and the modgud session.
 - **Role-based admin** — `shelf:admin` permission (or a configured email allowlist) gates users, settings, analytics and API-key reveal
 - **Product management API** — `POST/PUT/DELETE /_api/products[/{product}]` alongside the existing upload endpoints
 - **UI-managed API keys** — master key on the settings page plus per-product upload keys; keys are readable for admins

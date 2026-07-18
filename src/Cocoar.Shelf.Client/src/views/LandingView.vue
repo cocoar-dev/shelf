@@ -1,7 +1,16 @@
 <template>
   <div class="landing">
     <header class="landing-header">
+      <div class="header-side"></div>
       <h1>Documentation</h1>
+      <div class="header-side header-auth">
+        <template v-if="auth.isAuthenticated">
+          <RouterLink v-if="auth.user?.isAdmin" to="/admin" class="header-link">Admin</RouterLink>
+          <span class="header-user">{{ auth.userName }}</span>
+          <button class="header-link header-link--button" @click="auth.logout()">Sign out</button>
+        </template>
+        <button v-else class="header-link header-link--button" @click="auth.login()">Sign in</button>
+      </div>
     </header>
 
     <div class="landing-toolbar" v-if="hasAnyPreviewContent || allTags.length > 0">
@@ -82,9 +91,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
+import { RouterLink } from 'vue-router';
 import type { Product } from '@/core/models/shelf.models';
 import { usePreferencesStore } from '@/stores/preferences.store';
+import { useAuthStore } from '@/stores/auth.store';
 
+const auth = useAuthStore();
 const prefs = usePreferencesStore();
 const { showPreview, selectedTags } = storeToRefs(prefs);
 const { toggleTag, clearTags } = prefs;
@@ -174,13 +186,60 @@ onMounted(async () => {
   background: #1183CD;
   color: white;
   padding: 20px 24px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  gap: 16px;
 }
 
 .landing-header h1 {
   font-size: 1.5em;
   font-weight: 600;
   margin: 0;
+  text-align: center;
+}
+
+.header-side {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.header-auth {
+  justify-content: flex-end;
+}
+
+.header-user {
+  font-size: 0.88rem;
+  opacity: 0.85;
+  white-space: nowrap;
+}
+
+.header-link {
+  color: white;
+  font-size: 0.88rem;
+  font-weight: 500;
+  text-decoration: none;
+  opacity: 0.9;
+  white-space: nowrap;
+}
+
+.header-link:hover {
+  opacity: 1;
+  text-decoration: underline;
+}
+
+.header-link--button {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 6px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.header-link--button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  text-decoration: none;
 }
 
 .landing-toolbar {

@@ -27,6 +27,13 @@ export default defineConfig({
         secure: false,
         changeOrigin: true,
       },
+      // OIDC login/logout + callbacks are server routes, not SPA routes. changeOrigin stays OFF
+      // so the backend sees the :5173 host and generates the dev-server redirect_uri — the whole
+      // flow then stays on the vite origin.
+      '^/(login|logout|signin-oidc|signout-callback-oidc)': {
+        target: 'http://127.0.0.1:8080',
+        secure: false,
+      },
     },
   },
   resolve: {
