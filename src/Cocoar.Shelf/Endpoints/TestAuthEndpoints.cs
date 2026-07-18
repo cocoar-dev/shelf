@@ -1,6 +1,8 @@
 using System.Text.Json;
 using Cocoar.Shelf.Identity;
 using Cocoar.Shelf.Models;
+using Cocoar.Shelf.Services.Access;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 
 namespace Cocoar.Shelf.Endpoints;
@@ -21,7 +23,8 @@ public static class TestAuthEndpoints
     public static RouteGroupBuilder MapTestAuthEndpoints(this RouteGroupBuilder api)
     {
         api.MapPost("/test/signin", async (TestSignInRequest req, HttpContext ctx,
-            UserManager<UserDocument> users, SignInManager<UserDocument> signIn, ShelfOptions options) =>
+            UserManager<UserDocument> users, SignInManager<UserDocument> signIn, ShelfOptions options,
+            ILoginAccessProcessor loginProcessor) =>
         {
             UserDocument? user;
             if (req.UserId is { } id)
@@ -49,7 +52,14 @@ public static class TestAuthEndpoints
                 })
                 : null;
 
-            await ModgudUserProvisioning.SignInWithRbacAsync(ctx, signIn, user, resourceAccess);
+            var principal = await ModgudUserProvisioning.CreatePrincipalWithRbacAsync(signIn, user, resourceAccess);
+            await ctx.SignInAsync(IdentityConstants.ApplicationScheme, principal,
+                new AuthenticationProperties { IsPersistent = true });
+
+            // Same claims-snapshot + auto-membership refresh the real OIDC callback performs, so tests
+            // exercise the genuine group/RBAC path.
+            await loginProcessor.RefreshSnapshotAndRecalculateAsync(user.Id, principal, ctx.RequestAborted);
+
             return Results.Ok(new { user.Id, user.Email, user.DisplayName });
         });
 

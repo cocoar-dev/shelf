@@ -8,6 +8,9 @@
     <!-- Runtime -->
     <PackageVersion Include="Cocoar.Configuration.AspNetCore" Version="6.1.0" />
     <PackageVersion Include="Cocoar.FileSystem" Version="2.3.0" />
+    <!-- JsEval: sandboxed JS predicates for group auto-membership (Access Control v2). Engine only —
+         no .Linq (no SQL translation) / .TypeScript (plain-JS predicates), in-memory evaluation. -->
+    <PackageVersion Include="Cocoar.JsEval.Engine" Version="4.1.0" />
     <!-- Marten: max 9.11 — 9.12+ bricht Async-Projection-Catch-up (siehe Atlas AppTemplate/ueberblick) -->
     <PackageVersion Include="Marten" Version="9.11.0" />
     <PackageVersion Include="MaxMind.GeoIP2" Version="6.1.0" />

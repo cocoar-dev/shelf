@@ -58,6 +58,32 @@ public sealed class ModgudClaimsTransformation : IClaimsTransformation
         return Task.FromResult(principal);
     }
 
+    /// <summary>
+    /// Parses <c>resource_access[audience].permissions</c> out of the raw <c>resource_access</c> JSON
+    /// (as captured at sign-in) into a deduped string array. Used by the login claims snapshot so a
+    /// group predicate can read <c>user.permissions</c> without the per-request transform having run.
+    /// </summary>
+    public static string[] ParsePermissions(string? resourceAccessJson, string audience)
+    {
+        if (string.IsNullOrEmpty(resourceAccessJson) || string.IsNullOrWhiteSpace(audience))
+            return [];
+        if (!TryParseJson(resourceAccessJson, out var resourceAccess) ||
+            resourceAccess.ValueKind != JsonValueKind.Object)
+            return [];
+        if (!resourceAccess.TryGetProperty(audience.Trim(), out var audienceBlock) ||
+            audienceBlock.ValueKind != JsonValueKind.Object)
+            return [];
+        if (!audienceBlock.TryGetProperty("permissions", out var array) ||
+            array.ValueKind != JsonValueKind.Array)
+            return [];
+
+        return [.. array.EnumerateArray()
+            .Select(e => e.GetString())
+            .Where(s => !string.IsNullOrEmpty(s))
+            .Select(s => s!)
+            .Distinct(StringComparer.Ordinal)];
+    }
+
     private static void FlattenStringArray(
         ClaimsIdentity identity, JsonElement audienceBlock, string property, string claimType)
     {
