@@ -83,7 +83,7 @@ Frontend (`src/Cocoar.Shelf.Client/src/`):
   `#create` / `#<id>`; fixed height via `overlayOptions`); shared shell `components/ModalLayout.vue`
 - `views/products/` — grid + tabbed edit modal (General / Tags & API / Versions)
 - `views/admin/` — GeneralSettings (master key), Users, AccessLog, GeoIP; `views/AnalyticsView.vue`
-- Conventions: labels via `CoarFormField` (inputs have NO label prop in vue-ui 1.8), card
+- Conventions: labels via `CoarFormField` (inputs have NO label prop — also true in vue-ui 2.x), card
   titles via `CoarCard` `#header` slot, destructive actions via `useDialog().confirm`,
   grids bind `rowDataRef(computed(() => store.items))` to Pinia stores; bump
   `persistColumnState` keys when changing columns
