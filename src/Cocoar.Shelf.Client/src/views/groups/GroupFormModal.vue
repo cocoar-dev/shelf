@@ -4,6 +4,7 @@ import {
   CoarTextInput, CoarSelect, CoarCheckbox, CoarMultiSelect, CoarNote, CoarButton,
   CoarFormField, CoarTabGroup, CoarTab, CoarTable, CoarTag,
 } from '@cocoar/vue-ui';
+import { CoarScriptEditor } from '@cocoar/vue-script-editor';
 import ModalLayout from '@/components/ModalLayout.vue';
 import { useGroupsStore } from '@/stores/groups.store';
 import { useProductsStore } from '@/stores/products.store';
@@ -49,6 +50,10 @@ const testing = ref(false);
 const testResult = ref<{ matched: boolean; error: string | null; email: string | null } | null>(null);
 
 const isAuto = computed(() => form.value.membershipMode === 'Auto');
+
+// Hidden type context so the Monaco editor gives IntelliSense on `user` without diagnostics noise.
+const scriptPreamble =
+  'declare const user: { email: string; permissions: string[]; claims: Record<string, string | string[]> };';
 
 const productOptions = computed(() =>
   productsStore.items.map(p => ({ value: p.name, label: p.displayName || p.name })));
@@ -247,13 +252,15 @@ async function save() {
                   <code>user.email</code>, <code>user.permissions</code>, <code>user.claims</code>.
                   Evaluated at each login and on save; a broken script simply matches no one.
                 </p>
-                <textarea
+                <CoarScriptEditor
                   v-model="form.membershipScript"
-                  class="script-editor"
-                  rows="4"
-                  spellcheck="false"
+                  language="typescript"
+                  script-mode
+                  variant="editor"
+                  :preamble="scriptPreamble"
+                  height="180px"
                   placeholder="user.email.endsWith('@cocoar.dev')"
-                ></textarea>
+                />
                 <CoarNote v-if="lastError" variant="error" class="mt-2">
                   Last evaluation error: {{ lastError }}
                 </CoarNote>
@@ -367,24 +374,6 @@ async function save() {
   background: var(--coar-background-neutral-secondary);
   padding: 1px 5px;
   border-radius: 4px;
-}
-
-.script-editor {
-  width: 100%;
-  font-family: var(--coar-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
-  font-size: 0.85rem;
-  line-height: 1.5;
-  padding: 10px 12px;
-  border: 1px solid var(--coar-border-neutral-tertiary);
-  border-radius: var(--coar-radius-m, 4px);
-  background: var(--coar-background-neutral-primary);
-  color: var(--coar-text-neutral-primary);
-  resize: vertical;
-}
-
-.script-editor:focus {
-  outline: none;
-  border-color: var(--coar-text-accent-primary);
 }
 
 .mt-2 { margin-top: 8px; }

@@ -1,6 +1,7 @@
 @import "tailwindcss" layer(tailwind);
 @import "@cocoar/vue-ui/styles";
 @import "@cocoar/vue-data-grid/styles";
+@import "@cocoar/vue-script-editor/styles";
 
 :root {
   /* One accent everywhere: the Cocoar brand blue the vue-ui theme's primary
