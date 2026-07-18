@@ -1,3 +1,5 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Serilog.Events;
 
 namespace Cocoar.Shelf;
@@ -66,8 +68,47 @@ public class ModgudOptions
     public string AdminPermission { get; set; } = "shelf:admin";
 
     /// <summary>Email allowlist that is always admin — the no-lockout floor before modgud RBAC is
-    /// seeded.</summary>
+    /// seeded. Accepts a JSON array (config file) or a comma/semicolon-separated string
+    /// (<c>Shelf__Modgud__Admins=a@x,b@y</c>) — env vars cannot express JSON arrays
+    /// (<c>__0</c>-style keys build a <c>{"0":…}</c> object that fails to bind).</summary>
+    [JsonConverter(typeof(StringArrayFromCsvConverter))]
     public string[] Admins { get; set; } = [];
+}
+
+/// <summary>Deserializes <c>string[]</c> from either a JSON string ("a, b; c" — split on comma or
+/// semicolon, entries trimmed, empties dropped) or a JSON array of strings.</summary>
+public sealed class StringArrayFromCsvConverter : JsonConverter<string[]>
+{
+    public override string[] Read(ref Utf8JsonReader reader, Type typeToConvert, JsonSerializerOptions options)
+    {
+        if (reader.TokenType == JsonTokenType.String)
+        {
+            return (reader.GetString() ?? "").Split([',', ';'],
+                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        }
+
+        if (reader.TokenType != JsonTokenType.StartArray)
+            throw new JsonException($"Expected a string or an array of strings, got {reader.TokenType}");
+
+        var items = new List<string>();
+        while (reader.Read() && reader.TokenType != JsonTokenType.EndArray)
+        {
+            if (reader.TokenType != JsonTokenType.String)
+                throw new JsonException($"Expected array of strings, got {reader.TokenType}");
+            var value = reader.GetString()?.Trim();
+            if (!string.IsNullOrEmpty(value))
+                items.Add(value);
+        }
+        return [.. items];
+    }
+
+    public override void Write(Utf8JsonWriter writer, string[] value, JsonSerializerOptions options)
+    {
+        writer.WriteStartArray();
+        foreach (var item in value)
+            writer.WriteStringValue(item);
+        writer.WriteEndArray();
+    }
 }
 
 public class AccessLogOptions
