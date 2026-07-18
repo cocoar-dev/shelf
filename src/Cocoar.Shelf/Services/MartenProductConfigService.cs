@@ -12,18 +12,18 @@ public sealed class MartenProductConfigService : IProductConfigService
         _store = store;
     }
 
-    public ProductConfig? GetConfig(string name)
+    public async Task<ProductConfig?> GetConfigAsync(string name)
     {
-        using var session = _store.QuerySession();
-        return session.LoadAsync<ProductConfig>(name).GetAwaiter().GetResult();
+        await using var session = _store.QuerySession();
+        return await session.LoadAsync<ProductConfig>(name);
     }
 
-    public IReadOnlyList<ProductConfig> GetAll()
+    public async Task<IReadOnlyList<ProductConfig>> GetAllAsync()
     {
-        using var session = _store.QuerySession();
-        return session.Query<ProductConfig>()
+        await using var session = _store.QuerySession();
+        return await session.Query<ProductConfig>()
             .OrderBy(x => x.Name)
-            .ToList();
+            .ToListAsync();
     }
 
     public async Task CreateAsync(ProductConfig config)

@@ -50,7 +50,7 @@ public static partial class ApiEndpoints
         return app;
     }
 
-    private static IResult GetProducts(
+    private static async Task<IResult> GetProducts(
         IProductConfigService configService,
         IManifestService manifestService,
         ILoggerFactory loggerFactory)
@@ -58,7 +58,7 @@ public static partial class ApiEndpoints
         var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
         try
         {
-            var products = configService.GetAll().Select(config =>
+            var products = (await configService.GetAllAsync()).Select(config =>
             {
                 var manifest = manifestService.GetManifest(config.Name);
                 return new
@@ -85,7 +85,7 @@ public static partial class ApiEndpoints
         }
     }
 
-    private static IResult GetVersions(
+    private static async Task<IResult> GetVersions(
         string product,
         IProductConfigService configService,
         IManifestService manifestService,
@@ -94,7 +94,7 @@ public static partial class ApiEndpoints
         var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
         try
         {
-            var config = configService.GetConfig(product);
+            var config = await configService.GetConfigAsync(product);
             if (config == null)
             {
                 LogProductNotRegistered(logger, product);
@@ -117,7 +117,7 @@ public static partial class ApiEndpoints
         }
     }
 
-    private static IResult GetProduct(
+    private static async Task<IResult> GetProduct(
         string product,
         IProductConfigService configService,
         IManifestService manifestService,
@@ -126,7 +126,7 @@ public static partial class ApiEndpoints
         var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
         try
         {
-            var config = configService.GetConfig(product);
+            var config = await configService.GetConfigAsync(product);
             if (config == null)
             {
                 LogProductNotRegistered(logger, product);
@@ -158,9 +158,9 @@ public static partial class ApiEndpoints
     private static IResult GetShelfConfig(ShelfOptions options) =>
         Results.Ok(new { pathBase = options.PathBase });
 
-    private static IResult GetProductApiKey(string product, IProductConfigService configService)
+    private static async Task<IResult> GetProductApiKey(string product, IProductConfigService configService)
     {
-        var config = configService.GetConfig(product);
+        var config = await configService.GetConfigAsync(product);
         return config == null
             ? Results.Json(new { error = $"Product '{product}' is not registered" }, statusCode: 404)
             : Results.Ok(new { apiKey = config.ApiKey });
@@ -214,7 +214,7 @@ public static partial class ApiEndpoints
             maxSizeFeature.MaxRequestBodySize = opts.MaxUploadSizeBytes;
 
         // Check product is registered
-        var config = configService.GetConfig(product);
+        var config = await configService.GetConfigAsync(product);
         if (config == null)
         {
             LogUploadProductNotRegistered(logger, product);
@@ -306,7 +306,7 @@ public static partial class ApiEndpoints
             if (ReservedNames.Contains(request.Name))
                 return Results.Json(new { error = $"'{request.Name}' is a reserved name" }, statusCode: 400);
 
-            if (configService.GetConfig(request.Name) != null)
+            if (await configService.GetConfigAsync(request.Name) != null)
             {
                 LogProductAlreadyExists(logger, request.Name);
                 return Results.Json(new { error = $"Product '{request.Name}' already exists" }, statusCode: 409);
@@ -344,7 +344,7 @@ public static partial class ApiEndpoints
         var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
         try
         {
-            var existing = configService.GetConfig(product);
+            var existing = await configService.GetConfigAsync(product);
             if (existing == null)
             {
                 LogProductNotRegistered(logger, product);
@@ -385,7 +385,7 @@ public static partial class ApiEndpoints
         var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
         try
         {
-            var existing = configService.GetConfig(product);
+            var existing = await configService.GetConfigAsync(product);
             if (existing == null)
             {
                 LogProductNotRegistered(logger, product);
@@ -420,7 +420,7 @@ public static partial class ApiEndpoints
         var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
         try
         {
-            var config = configService.GetConfig(product);
+            var config = await configService.GetConfigAsync(product);
             if (config == null)
             {
                 LogProductNotRegistered(logger, product);

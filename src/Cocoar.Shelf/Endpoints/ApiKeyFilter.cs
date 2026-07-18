@@ -37,7 +37,7 @@ public partial class ApiKeyFilter(ILogger<ApiKeyFilter> logger) : IEndpointFilte
         if (!string.IsNullOrEmpty(product))
         {
             var configService = context.HttpContext.RequestServices.GetService<IProductConfigService>();
-            var productConfig = configService?.GetConfig(product);
+            var productConfig = configService == null ? null : await configService.GetConfigAsync(product);
 
             if (productConfig?.ApiKey != null && productConfig.ApiKey == provided)
                 return await next(context);

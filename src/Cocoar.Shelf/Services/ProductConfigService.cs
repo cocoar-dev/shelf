@@ -53,15 +53,15 @@ public sealed partial class ProductConfigService : IProductConfigService, IDispo
             .Build();
     }
 
-    public ProductConfig? GetConfig(string name)
+    public Task<ProductConfig?> GetConfigAsync(string name)
     {
         _cache.TryGetValue(name, out var config);
-        return config;
+        return Task.FromResult(config);
     }
 
-    public IReadOnlyList<ProductConfig> GetAll()
+    public Task<IReadOnlyList<ProductConfig>> GetAllAsync()
     {
-        return _cache.Values.OrderBy(c => c.Name).ToList();
+        return Task.FromResult<IReadOnlyList<ProductConfig>>(_cache.Values.OrderBy(c => c.Name).ToList());
     }
 
     private void LoadAll()
