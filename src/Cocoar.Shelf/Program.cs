@@ -12,6 +12,7 @@ using Cocoar.Shelf.Models;
 using Cocoar.Shelf.Services;
 using Marten;
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Serilog;
@@ -219,6 +220,16 @@ builder.Services.AddAuthorization(options =>
         .RequireAssertion(ctx => AdminCheck.IsAdmin(ctx.User, config)));
 });
 
+// Behind a TLS-terminating reverse proxy: honor X-Forwarded-Proto/Host so the app builds correct
+// absolute URLs — critically the OIDC redirect_uri, which must come out as https://<host>/signin-oidc
+// (not the internal http the app sees). Also puts the real visitor IP into the access log.
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+    options.KnownIPNetworks.Clear();
+    options.KnownProxies.Clear();
+});
+
 builder.Services.AddSingleton<IManifestService, ManifestService>();
 builder.Services.AddSingleton<IUploadService, UploadService>();
 builder.Services.AddSingleton<BasePathDetector>();
@@ -235,6 +246,10 @@ if (config.AccessLog.Enabled)
 }
 
 var app = builder.Build();
+
+// First: apply X-Forwarded-* from the reverse proxy, so scheme/host are correct for everything
+// downstream (OIDC redirect_uri, generated links, access-log IPs).
+app.UseForwardedHeaders();
 
 if (!string.IsNullOrEmpty(config.PathBase))
     app.UsePathBase(config.PathBase);
