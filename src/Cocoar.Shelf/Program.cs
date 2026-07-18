@@ -100,7 +100,10 @@ builder.Services.AddIdentityCore<UserDocument>()
 // AddIdentityCore doesn't register the stamp validator the cookie's ValidatePrincipal hook uses.
 builder.Services.AddScoped<ISecurityStampValidator, SecurityStampValidator<UserDocument>>();
 
-var modgudConfigured = !string.IsNullOrWhiteSpace(config.Modgud.WebClientId)
+// TestAuth (integration-test fixture only) replaces login with the test seam — never register
+// the OIDC handler there: it would fetch discovery from the configured issuer on first use.
+var modgudConfigured = !config.TestAuth
+    && !string.IsNullOrWhiteSpace(config.Modgud.WebClientId)
     && !string.IsNullOrWhiteSpace(config.Modgud.WebClientSecret);
 
 var authBuilder = builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)

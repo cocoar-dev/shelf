@@ -102,10 +102,10 @@ public class AuthApiTests
     }
 
     [Fact]
-    public async Task LoginPage_IsNotMapped_WithoutModgudClient()
+    public async Task LoginPage_IsNotMapped_InTestAuthMode()
     {
-        // The OIDC challenge endpoint only exists when a modgud web client is configured —
-        // the test host runs without one (auth comes through the test seam).
+        // TestAuth suppresses the OIDC handler entirely (auth comes through the test seam),
+        // so /login is unmapped regardless of the baked dev Modgud client config.
         var client = _fixture.CreateClient();
 
         var response = await client.GetAsync("/login");
