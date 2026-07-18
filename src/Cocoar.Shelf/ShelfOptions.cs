@@ -54,8 +54,10 @@ public class ModgudOptions
     /// roles/permissions.</summary>
     public string Audience { get; set; } = "shelf";
 
-    /// <summary>App subdomain the native OTP request goes to, so modgud host-resolves the Shelf
-    /// Application + its self-registration posture. Unset = use <see cref="Issuer"/> (dev).</summary>
+    /// <summary>Shelf's app subdomain on modgud (e.g. <c>https://shelf.auth.cocoar.dev</c>) — the
+    /// browser-facing OIDC hops (authorize + end-session) go there so modgud serves the
+    /// shelf-branded login UI. Token/userinfo/discovery stay on <see cref="Issuer"/> (the app
+    /// subdomain is not its own issuer). Unset = everything on <see cref="Issuer"/>.</summary>
     public string? AuthBase { get; set; }
 
     /// <summary>Confidential OIDC client for the BFF login broker.</summary>
