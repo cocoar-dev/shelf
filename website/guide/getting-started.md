@@ -1,3 +1,8 @@
+---
+title: Getting Started
+description: "What Shelf is and the five-minute path from a VitePress build to hosted, versioned documentation: run the container, register a product, upload a ZIP."
+---
+
 # Getting Started
 
 Shelf is a static documentation hosting platform for Cocoar products. It serves VitePress-generated documentation with support for multiple products and multiple versions per product.

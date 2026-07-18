@@ -1,5 +1,6 @@
 ---
 layout: home
+description: "Static documentation hosting for Cocoar products — multi-product, multi-version, VitePress-friendly, with an SSO admin UI and a CI/CD upload API."
 
 hero:
   name: Shelf

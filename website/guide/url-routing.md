@@ -1,3 +1,8 @@
+---
+title: URL Routing
+description: "How URLs map to products and versions: routing rules, latest-version redirects, SemVer detection, and what non-doc paths fall through to."
+---
+
 # URL Routing
 
 Shelf routes requests based on the URL structure. Every URL starts with a product name, optionally followed by a version.

@@ -1,3 +1,8 @@
+---
+title: Upload API
+description: "Deploy documentation from CI/CD: the ZIP upload endpoint, API-key authentication, version format rules, and ready-to-use GitHub Actions examples."
+---
+
 # Upload API
 
 Shelf provides an HTTP API for deploying documentation versions. This is designed for CI/CD pipelines -- analogous to `nuget push` or `docker push`.

@@ -1,3 +1,8 @@
+---
+title: Authentication
+description: "Shelf's two auth surfaces: human admin login federated to Modgud (OIDC code flow with SSO, no local passwords) and Bearer API keys for CI/CD uploads."
+---
+
 # Authentication
 
 Shelf has two separate authentication surfaces:

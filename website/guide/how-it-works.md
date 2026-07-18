@@ -1,3 +1,8 @@
+---
+title: How It Works
+description: "Architecture in one page — an ASP.NET Core server over a docs volume: version auto-detection, latest-redirects, base path rewriting, and PostgreSQL for products, users and analytics."
+---
+
 # How It Works
 
 Shelf is intentionally simple. It's an ASP.NET Core application that serves static files from a volume with smart URL routing and automatic base path rewriting.

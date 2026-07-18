@@ -1,3 +1,8 @@
+---
+title: Product Registration
+description: "Register products via Admin UI, API or JSON seed files: display metadata, tags, visibility, per-product API keys, and how the one-time JSON import into the database works."
+---
+
 # Product Registration
 
 Before documentation can be deployed via the [Upload API](./upload-api.md), a product must be registered. Products can be managed through the [Admin UI](./admin-ui.md), the API, or by placing JSON config files in the config directory.

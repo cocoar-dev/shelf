@@ -1,3 +1,8 @@
+---
+title: Caching
+description: "The cache headers Shelf applies: immutable hashed assets, revalidated HTML, and how the file watcher invalidates version manifests."
+---
+
 # Caching
 
 Shelf applies caching headers to optimize delivery of static assets.

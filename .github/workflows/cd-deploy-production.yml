@@ -165,13 +165,6 @@ jobs:
         working-directory: website
         run: npm ci
 
-      - name: Build VitePress
-        working-directory: website
-        run: npx vitepress build
-
-      - name: Package
-        run: cd website/.vitepress/dist && zip -r $GITHUB_WORKSPACE/docs.zip .
-
       - name: Extract docs version
         id: docs-version
         env:
@@ -186,6 +179,15 @@ jobs:
             MINOR=$(echo "$VERSION" | cut -d. -f2)
             echo "value=v${MAJOR}.${MINOR}" >> $GITHUB_OUTPUT
           fi
+
+      - name: Build VitePress
+        working-directory: website
+        env:
+          DOCS_VERSION: ${{ steps.docs-version.outputs.value }}
+        run: npx vitepress build
+
+      - name: Package
+        run: cd website/.vitepress/dist && zip -r $GITHUB_WORKSPACE/docs.zip .
 
       - name: Upload to Shelf
         env:

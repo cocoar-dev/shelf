@@ -1,3 +1,8 @@
+---
+title: Docker
+description: "Run Shelf as a Docker container: image tags, the docs/config volume mounts, a compose example and reverse-proxy notes."
+---
+
 # Docker
 
 Shelf runs as a Docker container with documentation and configuration files mounted as volumes.

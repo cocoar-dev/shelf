@@ -1,3 +1,8 @@
+---
+title: Troubleshooting
+description: "Symptoms and fixes for the common failure modes: missing docs, broken styling, upload rejections, login problems, and where the useful logs live."
+---
+
 # Troubleshooting
 
 ## Documentation Not Showing Up

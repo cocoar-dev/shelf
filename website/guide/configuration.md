@@ -1,3 +1,8 @@
+---
+title: Configuration
+description: "Every configuration option — PostgreSQL connection, volumes, Modgud federation, API keys, access log, upload limits — via configuration.json or Shelf__ environment variables."
+---
+
 # Configuration
 
 Shelf needs a PostgreSQL database, two volume mounts and a handful of environment variables.

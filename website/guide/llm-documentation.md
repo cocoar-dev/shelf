@@ -1,3 +1,8 @@
+---
+title: LLM Documentation
+description: "Serve llms.txt and llms-full.txt alongside your docs so AI assistants get real content instead of an empty SPA shell — plus Shelf's own root /llms.txt product index."
+---
+
 # LLM Documentation
 
 When AI assistants (Claude, ChatGPT, etc.) fetch a documentation page, they receive the raw HTML but typically don't execute JavaScript. Single-page applications and JavaScript-heavy frameworks render very little useful content without JS. This means an AI fetching your docs may get almost nothing.

@@ -33,6 +33,8 @@ jobs:
 
       - name: Build VitePress
         working-directory: website
+        env:
+          DOCS_VERSION: ${{ inputs.version }}
         run: npx vitepress build
 
       - name: Package

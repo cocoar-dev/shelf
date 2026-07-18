@@ -1,3 +1,8 @@
+---
+title: Base Path Rewriting
+description: "Why VitePress sites built with base '/' work under /product/version/ URLs: the HTML/CSS/JS response rewriter and its placeholder mechanics."
+---
+
 # Base Path Rewriting
 
 Shelf automatically rewrites the VitePress base path so that documentation sites built with the default `base: '/'` work correctly when served under a product/version URL like `/configuration/v5/`.

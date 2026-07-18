@@ -1,3 +1,8 @@
+---
+title: Admin UI
+description: "The built-in web interface at /admin — manage products and versions, browse analytics and the access log, configure API keys and GeoIP. Desktop-only by design."
+---
+
 # Admin UI
 
 Shelf includes a built-in web interface for managing products, documentation versions and the instance itself. The Admin UI is a Vue 3 single-page application served at `/admin/`, designed for desktop use.
