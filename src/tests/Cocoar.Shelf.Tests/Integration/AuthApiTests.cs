@@ -128,14 +128,27 @@ public class AuthApiTests
     }
 
     [Fact]
-    public async Task CookieAuth_WorksForProductWrites()
+    public async Task CookieAuth_AdminCanWriteProducts()
     {
-        // The admin UI path: cookie session (not API key) on the product write endpoints.
-        var client = await _fixture.CreateSignedInClientAsync("product-writer@shelf.test");
+        // The admin UI path: an admin cookie session (not API key) may write products.
+        var client = await _fixture.CreateSignedInClientAsync("product-writer@shelf.test", admin: true);
 
         var response = await client.PostAsJsonAsync("/_api/products",
             new { name = "cookie-write-1" });
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CookieAuth_NonAdmin_CannotWriteProducts()
+    {
+        // Product writes are an admin action: a plain authenticated cookie session is forbidden.
+        // Closes the gap where any JIT-provisioned modgud user could create/update/delete products.
+        var client = await _fixture.CreateSignedInClientAsync("plain-writer@shelf.test");
+
+        var response = await client.PostAsJsonAsync("/_api/products",
+            new { name = "cookie-write-denied" });
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 }

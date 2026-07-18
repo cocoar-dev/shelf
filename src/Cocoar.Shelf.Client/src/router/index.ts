@@ -20,6 +20,7 @@ export const router = createRouter({
           path: 'products',
           component: () => import('@/views/products/ProductListView.vue'),
           meta: {
+            admin: true,
             routedFragments: [
               {
                 type: 'modal',

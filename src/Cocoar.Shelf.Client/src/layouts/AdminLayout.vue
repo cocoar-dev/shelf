@@ -116,6 +116,7 @@ function logout() {
           @click="router.push('/admin')"
         />
         <CoarSidebarItem
+          v-if="authStore.user?.isAdmin"
           icon="book-open"
           label="Products"
           :active="route.path.startsWith('/admin/products')"

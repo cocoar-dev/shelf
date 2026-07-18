@@ -1,7 +1,11 @@
 <template>
   <div class="flex-1 min-w-0 py-6">
     <div class="stats-grid">
-      <div class="stat-card" @click="router.push('/admin/products')">
+      <div
+        class="stat-card"
+        :class="{ 'stat-card-clickable': isAdmin }"
+        @click="isAdmin && router.push('/admin/products')"
+      >
         <div class="stat-value">{{ products.length }}</div>
         <div class="stat-label">Products</div>
       </div>
@@ -11,7 +15,8 @@
       </div>
     </div>
 
-    <div v-if="products.length > 0" class="recent-section">
+    <!-- Product management is admin-only; non-admins get the overview counts without dead-end links. -->
+    <div v-if="isAdmin && products.length > 0" class="recent-section">
       <h2 class="section-title">Products</h2>
       <div class="product-list">
         <RouterLink
@@ -38,13 +43,17 @@ import { ref, computed, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { CoarNote } from '@cocoar/vue-ui';
 import { useUI } from '@/composables/useUI';
+import { useAuthStore } from '@/stores/auth.store';
 import { shelfApi } from '@/core/api/shelf-api';
 import type { Product } from '@/core/models/shelf.models';
 
 const router = useRouter();
 const ui = useUI();
+const authStore = useAuthStore();
 const products = ref<Product[]>([]);
 const error = ref('');
+
+const isAdmin = computed(() => authStore.user?.isAdmin ?? false);
 
 const totalVersions = computed(() =>
   products.value.reduce((sum, p) => sum + p.versions.length, 0)
@@ -78,11 +87,14 @@ onMounted(async () => {
   border: 1px solid var(--coar-border-neutral-tertiary);
   border-radius: 8px;
   padding: 24px;
-  cursor: pointer;
   transition: border-color 0.15s;
 }
 
-.stat-card:hover {
+.stat-card-clickable {
+  cursor: pointer;
+}
+
+.stat-card-clickable:hover {
   border-color: var(--coar-text-accent-primary);
 }
 
