@@ -5,6 +5,20 @@
   "PathBase": "",
   "ApiKey": "dev-key",
   "MaxUploadSizeBytes": 104857600,
+  "Database": {
+    "ConnectionString": "Host=localhost;Port=5432;Database=shelf;Username=postgres;Password=postgres"
+  },
+  "Modgud": {
+    "Issuer": "http://127.0.0.1:8092",
+    "Audience": "shelf",
+    "WebClientId": "shelf-web",
+    "WebClientSecret": "shelf-web-dev-secret",
+    "Admins": ["bwi@doob.at"]
+  },
+  "AccessLog": {
+    "Enabled": true,
+    "RetentionDays": 90
+  },
   "Logging": {
     "LogLevels": {
       "Default": "Information",

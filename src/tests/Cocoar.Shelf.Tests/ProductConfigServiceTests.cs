@@ -23,20 +23,20 @@ public sealed class ProductConfigServiceTests : IDisposable
     }
 
     [Fact]
-    public void GetConfig_ReturnsNull_WhenProductNotRegistered()
+    public async Task GetConfig_ReturnsNull_WhenProductNotRegistered()
     {
         using var sut = CreateService();
 
-        Assert.Null(sut.GetConfig("nonexistent"));
+        Assert.Null(await sut.GetConfigAsync("nonexistent"));
     }
 
     [Fact]
-    public void GetConfig_ReturnsConfig_WhenJsonFileExists()
+    public async Task GetConfig_ReturnsConfig_WhenJsonFileExists()
     {
         WriteConfig("myproduct", new { name = "myproduct", displayName = "My Product", description = "A test product", source = "upload" });
         using var sut = CreateService();
 
-        var result = sut.GetConfig("myproduct");
+        var result = await sut.GetConfigAsync("myproduct");
 
         Assert.NotNull(result);
         Assert.Equal("myproduct", result.Name);
@@ -46,13 +46,13 @@ public sealed class ProductConfigServiceTests : IDisposable
     }
 
     [Fact]
-    public void GetAll_ReturnsAllConfigs_Sorted()
+    public async Task GetAll_ReturnsAllConfigs_Sorted()
     {
         WriteConfig("beta", new { name = "beta", source = "upload" });
         WriteConfig("alpha", new { name = "alpha", source = "upload" });
         using var sut = CreateService();
 
-        var all = sut.GetAll();
+        var all = await sut.GetAllAsync();
 
         Assert.Equal(2, all.Count);
         Assert.Equal("alpha", all[0].Name);
@@ -60,40 +60,40 @@ public sealed class ProductConfigServiceTests : IDisposable
     }
 
     [Fact]
-    public void GetConfig_ReturnsNull_WhenJsonIsInvalid()
+    public async Task GetConfig_ReturnsNull_WhenJsonIsInvalid()
     {
         File.WriteAllText(Path.Combine(_productsDir, "broken.json"), "not json{{{");
         using var sut = CreateService();
 
-        Assert.Null(sut.GetConfig("broken"));
+        Assert.Null(await sut.GetConfigAsync("broken"));
     }
 
     [Fact]
-    public void Constructor_HandlesMissingConfigDirectory()
+    public async Task Constructor_HandlesMissingConfigDirectory()
     {
         using var sut = CreateService(Path.Combine(_tempDir, "nonexistent"));
 
-        Assert.Empty(sut.GetAll());
+        Assert.Empty(await sut.GetAllAsync());
     }
 
     [Fact]
-    public void GetConfig_UsesNameFromJsonNotFilename()
+    public async Task GetConfig_UsesNameFromJsonNotFilename()
     {
         // File named "foo.json" but JSON name is "bar"
         WriteConfig("foo", new { name = "bar", source = "upload" });
         using var sut = CreateService();
 
-        Assert.Null(sut.GetConfig("foo"));
-        Assert.NotNull(sut.GetConfig("bar"));
+        Assert.Null(await sut.GetConfigAsync("foo"));
+        Assert.NotNull(await sut.GetConfigAsync("bar"));
     }
 
     [Fact]
-    public void GetConfig_DefaultsSourceToUpload()
+    public async Task GetConfig_DefaultsSourceToUpload()
     {
         WriteConfig("minimal", new { name = "minimal" });
         using var sut = CreateService();
 
-        var result = sut.GetConfig("minimal");
+        var result = await sut.GetConfigAsync("minimal");
 
         Assert.NotNull(result);
         Assert.Equal("upload", result.Source);

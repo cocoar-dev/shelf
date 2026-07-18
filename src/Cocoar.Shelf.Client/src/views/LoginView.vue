@@ -3,18 +3,20 @@
     <div class="login-card">
       <div class="login-header">
         <h1>Shelf Admin</h1>
-        <p>Enter your API key to continue</p>
+        <p v-if="step === 'email'">Sign in with your email</p>
+        <p v-else>Enter the code we sent you</p>
       </div>
 
-      <form @submit.prevent="onLogin">
-        <CoarTextInput
-          v-model="apiKey"
-          label="API Key"
-          type="password"
-          placeholder="Enter API key"
-          :disabled="isLoading"
-          required
-        />
+      <!-- Step: Email -->
+      <form v-if="step === 'email'" @submit.prevent="onRequestCode">
+        <CoarFormField label="Email" :disabled="isLoading" required>
+          <CoarTextInput
+            v-model="email"
+            type="email"
+            placeholder="your@email.com"
+            autocomplete="email"
+          />
+        </CoarFormField>
 
         <CoarNote v-if="error" variant="error" class="mt-3">{{ error }}</CoarNote>
 
@@ -22,11 +24,43 @@
           type="submit"
           variant="primary"
           :loading="isLoading"
-          :disabled="!apiKey"
+          :disabled="!email"
+          class="mt-4 w-full"
+        >
+          Send Login Code
+        </CoarButton>
+      </form>
+
+      <!-- Step: Code -->
+      <form v-else @submit.prevent="onVerifyCode">
+        <CoarNote variant="info" class="mb-3">
+          If <strong>{{ email }}</strong> is registered, a 6-digit code is on its way.
+        </CoarNote>
+
+        <CoarFormField label="Login Code" :disabled="isLoading" required>
+          <CoarTextInput
+            v-model="code"
+            placeholder="000000"
+            inputmode="numeric"
+            autocomplete="one-time-code"
+          />
+        </CoarFormField>
+
+        <CoarNote v-if="error" variant="error" class="mt-3">{{ error }}</CoarNote>
+
+        <CoarButton
+          type="submit"
+          variant="primary"
+          :loading="isLoading"
+          :disabled="!code"
           class="mt-4 w-full"
         >
           Sign In
         </CoarButton>
+
+        <button type="button" class="back-link mt-3" :disabled="isLoading" @click="onBack">
+          Use a different email
+        </button>
       </form>
     </div>
   </div>
@@ -35,32 +69,51 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { CoarTextInput, CoarButton, CoarNote } from '@cocoar/vue-ui';
+import { CoarTextInput, CoarButton, CoarNote, CoarFormField } from '@cocoar/vue-ui';
 import { useAuthStore } from '@/stores/auth.store';
 
 const router = useRouter();
 const auth = useAuthStore();
 
-const apiKey = ref('');
+type Step = 'email' | 'code';
+
+const step = ref<Step>('email');
+const email = ref('');
+const code = ref('');
 const isLoading = ref(false);
 const error = ref('');
 
-async function onLogin() {
+async function onRequestCode() {
   error.value = '';
   isLoading.value = true;
-
   try {
-    const success = await auth.login(apiKey.value);
-    if (success) {
-      router.push('/admin');
-    } else {
-      error.value = 'Invalid API key';
-    }
-  } catch {
-    error.value = 'Connection failed';
+    await auth.requestLoginCode(email.value.trim());
+    code.value = '';
+    step.value = 'code';
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Failed to send code';
   } finally {
     isLoading.value = false;
   }
+}
+
+async function onVerifyCode() {
+  error.value = '';
+  isLoading.value = true;
+  try {
+    await auth.verifyLoginCode(email.value.trim(), code.value.trim());
+    router.push('/admin');
+  } catch (e) {
+    error.value = e instanceof Error ? e.message : 'Invalid or expired code';
+  } finally {
+    isLoading.value = false;
+  }
+}
+
+function onBack() {
+  step.value = 'email';
+  code.value = '';
+  error.value = '';
 }
 </script>
 
@@ -101,6 +154,22 @@ async function onLogin() {
   margin: 0;
 }
 
+.back-link {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--coar-text-neutral-secondary);
+  font-size: 0.85rem;
+  cursor: pointer;
+  text-align: center;
+}
+
+.back-link:hover {
+  color: var(--coar-text-neutral-primary);
+}
+
+.mb-3 { margin-bottom: 12px; }
 .mt-3 { margin-top: 12px; }
 .mt-4 { margin-top: 16px; }
 .w-full { width: 100%; }

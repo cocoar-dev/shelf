@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using Cocoar.Configuration.Reactive;
+using Cocoar.Shelf.Models;
 using Cocoar.Shelf.Services;
 using Microsoft.AspNetCore.StaticFiles;
 
@@ -11,6 +12,7 @@ public partial class DocsRoutingMiddleware
     private readonly IManifestService _manifestService;
     private readonly BasePathDetector _basePathDetector;
     private readonly IReactiveConfig<ShelfOptions> _config;
+    private readonly AccessLogChannel? _accessLog;
     private readonly FileExtensionContentTypeProvider _contentTypeProvider = new();
     private (string Pattern, Regex Compiled) _versionRegexCache;
 
@@ -18,12 +20,14 @@ public partial class DocsRoutingMiddleware
         RequestDelegate next,
         IManifestService manifestService,
         BasePathDetector basePathDetector,
-        IReactiveConfig<ShelfOptions> config)
+        IReactiveConfig<ShelfOptions> config,
+        AccessLogChannel? accessLog = null)
     {
         _next = next;
         _manifestService = manifestService;
         _basePathDetector = basePathDetector;
         _config = config;
+        _accessLog = accessLog;
         var initialPattern = config.CurrentValue.VersionPattern;
         _versionRegexCache = (initialPattern, new Regex(initialPattern, RegexOptions.Compiled));
     }
@@ -66,6 +70,9 @@ public partial class DocsRoutingMiddleware
         string version;
 
         var restSegments = rest.Split('/', 2);
+        // Page path WITHOUT the version segment — this is what the access log stores
+        // (Path = "guide/intro", not "v1/guide/intro").
+        var pagePath = restSegments.Length > 1 ? restSegments[1] : "";
         if (restSegments[0].Length > 0 && GetVersionRegex().IsMatch(restSegments[0]))
         {
             version = restSegments[0];
@@ -137,11 +144,39 @@ public partial class DocsRoutingMiddleware
                 var content = await File.ReadAllTextAsync(resolvedPath);
                 var rewritten = BasePathRewriter.Rewrite(content, originalBase, targetBase, contentType);
                 await context.Response.WriteAsync(rewritten);
+                if (contentType.Contains("text/html"))
+                    RecordAccess(context, product, version, pagePath);
                 return;
             }
         }
 
         await context.Response.SendFileAsync(resolvedPath);
+
+        if (contentType.Contains("text/html"))
+            RecordAccess(context, product, version, pagePath);
+    }
+
+    private void RecordAccess(HttpContext context, string product, string version, string rest)
+    {
+        if (_accessLog == null)
+            return;
+
+        // Page views only: HEAD requests are health checks / link probes, not visits.
+        if (context.Request.Method != HttpMethods.Get)
+            return;
+
+        _accessLog.Write(new AccessLogEntry
+        {
+            Id = Guid.NewGuid(),
+            Timestamp = DateTimeOffset.UtcNow,
+            Ip = context.Connection.RemoteIpAddress?.ToString() ?? "",
+            Product = product,
+            Version = version,
+            Path = rest,
+            UserAgent = context.Request.Headers.UserAgent.ToString(),
+            Referer = context.Request.Headers.Referer.ToString(),
+            AcceptLanguage = context.Request.Headers.AcceptLanguage.ToString()
+        });
     }
 
     private static bool IsTextContent(string contentType) =>

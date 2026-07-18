@@ -1,6 +1,6 @@
 # Configuration
 
-Shelf requires minimal configuration. Most setups work with just Docker volume mounts and a few environment variables.
+Shelf needs a PostgreSQL database, two volume mounts and a handful of environment variables.
 
 ## Configuration File
 
@@ -15,6 +15,18 @@ Shelf uses its own configuration file at `data/configuration.json` (relative to 
   "ApiKey": "",
   "MaxUploadSizeBytes": 104857600,
   "VersionPattern": "^v?\\d+(\\.\\d+(\\.\\d+(-[\\w.-]+)?)?)?$",
+  "Database": {
+    "ConnectionString": "Host=postgres;Database=shelf;Username=postgres;Password=..."
+  },
+  "Modgud": {
+    "Issuer": "https://auth.example.com",
+    "Audience": "shelf",
+    "WebClientId": "shelf-web"
+  },
+  "AccessLog": {
+    "Enabled": true,
+    "RetentionDays": 90
+  },
   "Logging": {
     "LogLevels": {
       "Default": "Information",
@@ -32,11 +44,25 @@ Configuration can be set via `data/configuration.json` or overridden with enviro
 |---|---|---|---|
 | `AppUrl` | `Shelf__AppUrl` | `http://0.0.0.0:8080` | Server binding URL and port |
 | `DocsRoot` | `Shelf__DocsRoot` | `/data/docs` | Root directory for documentation files |
-| `ConfigRoot` | `Shelf__ConfigRoot` | `/data/config` | Root directory for [product config](./product-registration.md) files |
+| `ConfigRoot` | `Shelf__ConfigRoot` | `/data/config` | Root directory for [product config](./product-registration.md) seed files |
 | `PathBase` | `Shelf__PathBase` | _(empty)_ | Global URL prefix for running under a sub-path |
 | `VersionPattern` | `Shelf__VersionPattern` | `^v?\d+(\.\d+(\.\d+(-[\w.-]+)?)?)?$` | Regex pattern to identify version directories |
-| `ApiKey` | `Shelf__ApiKey` | _(empty)_ | API key for protected endpoints. Empty = upload and admin disabled |
+| `ApiKey` | `Shelf__ApiKey` | _(empty)_ | Bootstrap master API key. See [Authentication](./authentication.md#api-keys-cicd) |
 | `MaxUploadSizeBytes` | `Shelf__MaxUploadSizeBytes` | `104857600` | Maximum upload size in bytes (100 MB) |
+| `Database.ConnectionString` | `Shelf__Database__ConnectionString` | — | **Required.** PostgreSQL connection string |
+| `Modgud.*` | `Shelf__Modgud__*` | — | Identity provider federation. See [Authentication](./authentication.md#configuration) |
+| `AccessLog.Enabled` | `Shelf__AccessLog__Enabled` | `false` | Record documentation page views for [Analytics](./admin-ui.md#analytics) |
+| `AccessLog.RetentionDays` | `Shelf__AccessLog__RetentionDays` | `90` | How long access log entries are kept |
+
+## Database
+
+Shelf requires PostgreSQL (via [Marten](https://martendb.io/)). It stores product registrations, users, runtime settings and the access log; the schema is created and migrated automatically on startup. Documentation files themselves stay on the filesystem.
+
+Product registration JSON files found in `{ConfigRoot}/products/` are imported into the database once at startup (existing database entries win) — this makes upgrades from file-based setups seamless. After the import, products are managed via the Admin UI or API.
+
+## Access Log
+
+When `AccessLog.Enabled` is true, Shelf records one entry per documentation page view (HTML page loads only — assets and HEAD requests are not counted) with IP, product, version, path, user agent and referrer. The [Analytics](./admin-ui.md#analytics) page visualizes this data; the optional [GeoIP database](./admin-ui.md#administration) adds country/city resolution.
 
 ## PathBase
 

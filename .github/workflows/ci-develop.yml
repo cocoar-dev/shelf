@@ -5,8 +5,8 @@ on:
     branches: [ develop ]
 
 jobs:
-  build-and-test:
-    name: Build & Test
+  backend:
+    name: Backend Build & Test
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -48,23 +48,50 @@ jobs:
       - name: Log version
         run: echo "Building version ${{ steps.gv.outputs.SemVer }}"
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Build Admin UI
-        working-directory: ./src/Cocoar.Shelf.Client
-        run: npm ci && npm run build
-
-      - name: Restore dependencies
+      - name: Restore backend dependencies
         run: dotnet restore Cocoar.Shelf.slnx
         working-directory: ./src
 
-      - name: Build
+      - name: Build backend
         run: dotnet build Cocoar.Shelf.slnx -c Release --no-restore -p:Version=${{ steps.gv.outputs.SemVer }}
         working-directory: ./src
 
-      - name: Test
+      # Formatting gate — what `dotnet build` cannot check: whitespace layout and
+      # IDE-style rules. Style pass gates at error severity only.
+      - name: Verify formatting (whitespace)
+        run: dotnet format Cocoar.Shelf.slnx whitespace --verify-no-changes
+        working-directory: ./src
+
+      - name: Verify formatting (style, hard tier)
+        run: dotnet format Cocoar.Shelf.slnx style --verify-no-changes --severity error
+        working-directory: ./src
+
+      - name: Test backend
         run: dotnet test Cocoar.Shelf.slnx -c Release --no-build --verbosity normal
         working-directory: ./src
+
+  frontend:
+    name: Frontend Build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Install pnpm
+        run: corepack enable && corepack prepare pnpm@10.13.1 --activate
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+        working-directory: ./src/Cocoar.Shelf.Client
+
+      - name: Build frontend
+        run: pnpm build
+        working-directory: ./src/Cocoar.Shelf.Client

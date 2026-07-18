@@ -38,31 +38,6 @@ public class AdminApiTests
     #region Auth
 
     [Fact]
-    public async Task Login_Returns200_WithValidKey()
-    {
-        var response = await _client.PostAsync("/_api/auth/login", Json(new { apiKey = _fixture.ApiKey }));
-
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.True(response.Headers.Contains("Set-Cookie"));
-    }
-
-    [Fact]
-    public async Task Login_Returns401_WithWrongKey()
-    {
-        var response = await _client.PostAsync("/_api/auth/login", Json(new { apiKey = "wrong" }));
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Me_Returns401_WhenNotLoggedIn()
-    {
-        var response = await _client.GetAsync("/_api/auth/me");
-
-        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
     public async Task BearerToken_StillWorksForCiCd()
     {
         var request = Auth(new HttpRequestMessage(HttpMethod.Post, "/_api/products")

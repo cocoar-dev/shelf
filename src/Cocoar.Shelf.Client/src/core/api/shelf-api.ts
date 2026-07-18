@@ -5,6 +5,7 @@ export const shelfApi = {
   getProducts: () => http.get<Product[]>('/products'),
   getProduct: (name: string) => http.get<Product>(`/products/${name}`),
   getVersions: (product: string) => http.get<ProductVersions>(`/products/${product}/versions`),
+  getProductApiKey: (name: string) => http.get<{ apiKey: string | null }>(`/products/${name}/api-key`),
   createProduct: (req: CreateProductRequest) => http.post<Product>('/products', req),
   updateProduct: (name: string, req: UpdateProductRequest) => http.put<Product>(`/products/${name}`, req),
   deleteProduct: (name: string, deleteData = false) =>

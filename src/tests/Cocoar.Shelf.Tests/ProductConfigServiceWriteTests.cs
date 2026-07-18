@@ -32,7 +32,7 @@ public sealed class ProductConfigServiceWriteTests : IDisposable
         await sut.CreateAsync(product);
 
         Assert.True(File.Exists(Path.Combine(_productsDir, "new-product.json")));
-        var result = sut.GetConfig("new-product");
+        var result = await sut.GetConfigAsync("new-product");
         Assert.NotNull(result);
         Assert.Equal("New", result.DisplayName);
     }
@@ -67,7 +67,7 @@ public sealed class ProductConfigServiceWriteTests : IDisposable
         await sut.CreateAsync(product);
 
         // Should be in cache immediately, not waiting for FileSystemWatcher
-        var result = sut.GetConfig("immediate-read");
+        var result = await sut.GetConfigAsync("immediate-read");
         Assert.NotNull(result);
         Assert.Equal("Test", result.DisplayName);
     }
@@ -82,7 +82,7 @@ public sealed class ProductConfigServiceWriteTests : IDisposable
         var updated = new ProductConfig { Name = "to-update", DisplayName = "New", Description = "Added", Source = "upload" };
         await sut.UpdateAsync(updated);
 
-        var result = sut.GetConfig("to-update");
+        var result = await sut.GetConfigAsync("to-update");
         Assert.NotNull(result);
         Assert.Equal("New", result.DisplayName);
         Assert.Equal("Added", result.Description);
@@ -104,13 +104,13 @@ public sealed class ProductConfigServiceWriteTests : IDisposable
             JsonSerializer.Serialize(new { name = "to-delete", source = "upload" }));
         using var sut = CreateService();
 
-        Assert.NotNull(sut.GetConfig("to-delete"));
+        Assert.NotNull(await sut.GetConfigAsync("to-delete"));
 
         var result = await sut.DeleteAsync("to-delete");
 
         Assert.True(result);
         Assert.False(File.Exists(Path.Combine(_productsDir, "to-delete.json")));
-        Assert.Null(sut.GetConfig("to-delete"));
+        Assert.Null(await sut.GetConfigAsync("to-delete"));
     }
 
     [Fact]

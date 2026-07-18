@@ -4,10 +4,12 @@ Shelf provides an HTTP API for deploying documentation versions. This is designe
 
 ## Prerequisites
 
-1. The product must be [registered](./product-registration.md) (via Admin UI, API, or config file)
-2. An API key must be [configured](./configuration.md) (`Shelf__ApiKey`)
+1. The product must be [registered](./product-registration.md) (via Admin UI, API, or seed file)
+2. An API key — either the product's own key, or a master key. See [Authentication](./authentication.md#api-keys-cicd)
 
-If no API key is configured, protected endpoints return `503 Service Unavailable`.
+::: tip Per-product keys
+Give each pipeline the per-product key from its product's **Tags & API** tab instead of the master key — a leaked key can then only deploy that one product.
+:::
 
 ## Uploading a Version
 
@@ -163,11 +165,7 @@ All API routes use the `/_api/` prefix. See [Authentication](./authentication.md
 
 ### Authentication
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `POST` | `/_api/auth/login` | No | Cookie login with API key |
-| `POST` | `/_api/auth/logout` | No | Clear session cookie |
-| `GET` | `/_api/auth/me` | No | Get current auth status |
+See [Authentication](./authentication.md) — the Admin UI signs in via Modgud (email code); API access uses Bearer keys.
 
 ### List Products
 
@@ -235,7 +233,6 @@ Deletes a documentation version. Requires [authentication](./authentication.md).
 | `404` | Product not registered |
 | `409` | Concurrent upload for the same product/version |
 | `413` | ZIP exceeds maximum upload size |
-| `503` | No API key configured (upload disabled) |
 
 ## Security
 

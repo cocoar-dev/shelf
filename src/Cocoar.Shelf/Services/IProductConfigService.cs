@@ -4,9 +4,9 @@ namespace Cocoar.Shelf.Services;
 
 public interface IProductConfigService
 {
-    ProductConfig? GetConfig(string name);
+    Task<ProductConfig?> GetConfigAsync(string name);
 
-    IReadOnlyList<ProductConfig> GetAll();
+    Task<IReadOnlyList<ProductConfig>> GetAllAsync();
 
     Task CreateAsync(ProductConfig config);
 

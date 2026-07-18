@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div class="flex-1 min-w-0 py-6">
     <div class="stats-grid">
       <div class="stat-card" @click="router.push('/admin/products')">
         <div class="stat-value">{{ products.length }}</div>
@@ -17,7 +17,7 @@
         <RouterLink
           v-for="product in products"
           :key="product.name"
-          :to="`/admin/products/${product.name}`"
+          :to="`/admin/products#${product.name}`"
           class="product-item"
         >
           <div class="product-name">{{ product.displayName || product.name }}</div>
@@ -53,6 +53,7 @@ const totalVersions = computed(() =>
 ui.set(ctx => {
   ctx.header.title = 'Dashboard';
   ctx.header.subTitle = 'Overview of your documentation hosting';
+  ctx.header.icon = 'layout-dashboard';
 });
 
 onMounted(async () => {

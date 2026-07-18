@@ -6,6 +6,7 @@ export interface Product {
   visibility: string;
   tags: string[];
   showWhenEmpty: boolean;
+  hasApiKey: boolean;
   latest: string | null;
   versions: string[];
 }
@@ -24,6 +25,8 @@ export interface CreateProductRequest {
   visibility?: string;
   tags?: string[];
   showWhenEmpty?: boolean;
+  /** Per-product upload key. Write-only: responses only carry hasApiKey. */
+  apiKey?: string;
 }
 
 export interface UpdateProductRequest {
@@ -33,4 +36,12 @@ export interface UpdateProductRequest {
   visibility?: string;
   tags?: string[];
   showWhenEmpty?: boolean;
+  /** undefined = keep, '' = remove, value = replace. */
+  apiKey?: string;
+}
+
+export interface ShelfSettingsInfo {
+  hasMasterApiKey: boolean;
+  masterApiKey: string | null;
+  hasConfigApiKey: boolean;
 }

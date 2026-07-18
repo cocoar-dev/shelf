@@ -63,6 +63,7 @@ src/Cocoar.Shelf/wwwroot/index.html
 
 # Client dependencies
 src/Cocoar.Shelf.Client/node_modules/
+*.tsbuildinfo
 
 # VitePress
 website/.vitepress/cache/

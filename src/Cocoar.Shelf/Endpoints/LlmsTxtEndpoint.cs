@@ -12,7 +12,7 @@ public static class LlmsTxtEndpoint
         return app;
     }
 
-    private static IResult Generate(
+    private static async Task<IResult> Generate(
         HttpContext httpContext,
         IProductConfigService configService,
         IManifestService manifestService)
@@ -26,7 +26,7 @@ public static class LlmsTxtEndpoint
         sb.AppendLine(ci, $"> Documentation hosting for Cocoar products");
         sb.AppendLine();
 
-        var products = configService.GetAll();
+        var products = await configService.GetAllAsync();
         var hasProducts = false;
 
         foreach (var config in products)

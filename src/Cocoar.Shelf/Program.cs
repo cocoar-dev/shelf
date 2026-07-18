@@ -1,13 +1,17 @@
+using System.Globalization;
 using Cocoar.Configuration.AspNetCore;
 using Cocoar.Configuration.DI.Extensions;
 using Cocoar.Configuration.Providers;
 using Cocoar.Configuration.Reactive;
 using Cocoar.Shelf;
 using Cocoar.Shelf.Endpoints;
+using Cocoar.Shelf.Identity;
 using Cocoar.Shelf.Middleware;
+using Cocoar.Shelf.Models;
 using Cocoar.Shelf.Services;
-using System.Globalization;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Marten;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Identity;
 using Serilog;
 using Serilog.Sinks.SystemConsole.Themes;
 
@@ -44,26 +48,103 @@ builder.Services.AddSerilog(logConfig =>
     logConfig.WriteTo.Console(theme: AnsiConsoleTheme.Code, formatProvider: CultureInfo.InvariantCulture);
 });
 
-builder.Services.AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
-    .AddCookie(options =>
+// --- Database (Marten/PostgreSQL) — required ---
+if (string.IsNullOrEmpty(config.Database.ConnectionString))
+    throw new InvalidOperationException(
+        "Shelf requires PostgreSQL: set Database.ConnectionString (env Shelf__Database__ConnectionString).");
+
+builder.Services.AddMarten(opts =>
+{
+    opts.Connection(config.Database.ConnectionString);
+
+    // Users (thin local mirror of modgud identities, Id == modgud sub)
+    opts.Schema.For<UserDocument>()
+        .DatabaseSchemaName("shelf")
+        .UniqueIndex(x => x.NormalizedUserName)
+        .Index(x => x.NormalizedEmail)
+        .Index(x => x.IsActive);
+
+    // Access log
+    opts.Schema.For<AccessLogEntry>()
+        .DatabaseSchemaName("shelf")
+        .Index(x => x.Timestamp)
+        .Index(x => x.Product)
+        .Index(x => x.Ip);
+
+    // Product config
+    opts.Schema.For<ProductConfig>()
+        .DatabaseSchemaName("shelf")
+        .Identity(x => x.Name);
+
+    // Global runtime settings (single document)
+    opts.Schema.For<ShelfSettings>()
+        .DatabaseSchemaName("shelf");
+})
+.UseLightweightSessions()
+.ApplyAllDatabaseChangesOnStartup();
+
+builder.Services.AddHttpClient("geoip");
+builder.Services.AddSingleton<GeoIpService>();
+
+// --- Identity + modgud federation ---
+// modgud (external IdP) owns all credentials; login is brokered server-to-server (ModgudLoginBroker)
+// and mints the cookie session. ASP.NET Identity plumbing stays ONLY to carry the cookie
+// (SecurityStamp pipeline) and as the integration tests' sign-in seam — it is not a product login.
+builder.Services.AddIdentityCore<UserDocument>()
+    .AddSignInManager()
+    .AddUserStore<MartenUserStore>();
+
+// AddIdentityCore doesn't register the stamp validator the cookie's ValidatePrincipal hook uses.
+builder.Services.AddScoped<ISecurityStampValidator, SecurityStampValidator<UserDocument>>();
+
+builder.Services.AddAuthentication(IdentityConstants.ApplicationScheme)
+    .AddCookie(IdentityConstants.ApplicationScheme, options =>
     {
         options.Cookie.Name = "shelf.auth";
         options.Cookie.HttpOnly = true;
         options.Cookie.SameSite = SameSiteMode.Strict;
-        options.ExpireTimeSpan = TimeSpan.FromHours(12);
+        options.ExpireTimeSpan = TimeSpan.FromDays(30);
         options.SlidingExpiration = true;
+        // Keep the modgud RBAC snapshot (resource_access claim) alive across the security-stamp
+        // validator's periodic principal regeneration.
+        options.Events.OnValidatePrincipal = RbacCookiePreservation.ValidatePreservingRbacAsync;
         options.Events.OnRedirectToLogin = context =>
         {
             context.Response.StatusCode = 401;
             return Task.CompletedTask;
         };
+        options.Events.OnRedirectToAccessDenied = context =>
+        {
+            context.Response.StatusCode = 403;
+            return Task.CompletedTask;
+        };
     });
-builder.Services.AddAuthorization();
+
+builder.Services.AddHttpClient(ModgudLoginBroker.HttpClientName);
+builder.Services.AddScoped<ModgudLoginBroker>();
+builder.Services.AddTransient<IClaimsTransformation, ModgudClaimsTransformation>();
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin", policy => policy
+        .RequireAuthenticatedUser()
+        .RequireAssertion(ctx => AdminCheck.IsAdmin(ctx.User, config)));
+});
 
 builder.Services.AddSingleton<IManifestService, ManifestService>();
-builder.Services.AddSingleton<IProductConfigService, ProductConfigService>();
 builder.Services.AddSingleton<IUploadService, UploadService>();
 builder.Services.AddSingleton<BasePathDetector>();
+builder.Services.AddSingleton<ISettingsService, SettingsService>();
+
+builder.Services.AddSingleton<IProductConfigService, MartenProductConfigService>();
+builder.Services.AddHostedService<ProductConfigMigrationService>();
+
+// Access log
+if (config.AccessLog.Enabled)
+{
+    builder.Services.AddSingleton<AccessLogChannel>();
+    builder.Services.AddHostedService<AccessLogPersistenceService>();
+}
 
 var app = builder.Build();
 
@@ -83,7 +164,7 @@ app.UseSerilogRequestLogging();
 app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapApiEndpoints();
+app.MapApiEndpoints(config);
 app.MapLlmsTxt();
 app.UseMiddleware<DocsRoutingMiddleware>();
 app.MapFallback(async (HttpContext ctx, IReactiveConfig<ShelfOptions> shelfConfig) =>
