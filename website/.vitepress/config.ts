@@ -3,6 +3,7 @@ import llmstxt from 'vitepress-plugin-llms'
 import { execSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import fs from 'node:fs'
 
 const dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -60,6 +61,16 @@ export default defineConfig({
     })],
   },
 
+  // llms-full.txt is a plain concatenation with no template hook in this plugin
+  // version — stamp the provenance header ourselves after the plugin has written
+  // the file (same pattern as the modgud docs).
+  async buildEnd(siteConfig) {
+    const fullPath = path.join(siteConfig.outDir, 'llms-full.txt')
+    if (!fs.existsSync(fullPath)) return
+    const header = `# Shelf\n\n> ${llmsTxtProvenance}\n\n`
+    fs.writeFileSync(fullPath, header + fs.readFileSync(fullPath, 'utf-8'))
+  },
+
   themeConfig: {
     logo: {
       light: '/logo_light.svg',
@@ -68,13 +79,13 @@ export default defineConfig({
 
     siteTitle: 'Shelf',
 
-    // No nav link to /llms-full.txt (modgud parity): VitePress skips withBase for
-    // non-HTML targets at hydration, so the link would point at the site root and
-    // break under /shelf/<version>/. Discovery paths that DO work everywhere:
-    // the rel=alternate head links, the plugin's per-page footer notice, and the
-    // LLM Documentation guide page.
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
+      // llms.txt (the summary), NOT llms-full.txt — modgud convention. Note: VitePress
+      // skips withBase for .txt targets at hydration, so under /shelf/<version>/ the
+      // click lands on the ROOT /llms.txt — which is Shelf's product index (useful);
+      // a root /llms-full.txt would 404, which is why that variant must not come back.
+      { text: 'LLM Docs', link: '/llms.txt', target: '_blank' },
     ],
 
     sidebar: {
