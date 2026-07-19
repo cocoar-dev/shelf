@@ -298,49 +298,54 @@ async function onDeleteVersion(version: string) {
                 v-model="form.showWhenEmpty"
                 label="Show on landing page even without published versions"
               />
-
-              <div class="access-block">
-                <CoarCheckbox
-                  v-model="form.restricted"
-                  label="Restricted — only assigned groups/users may view"
-                />
-                <p class="section-desc access-desc">
-                  Restricted products are hidden from users without access and return 404 on
-                  unauthorized requests. Orthogonal to visibility (a product can be preview + restricted).
-                </p>
-
-                <div v-if="form.restricted" class="access-grants">
-                  <div class="section-heading">Who may read</div>
-                  <div class="grant-add-row">
-                    <CoarSelect
-                      :model-value="null"
-                      :options="availablePrincipalOptions"
-                      placeholder="Add a group or user…"
-                      searchable
-                      class="flex-1"
-                      @update:model-value="addPrincipalByKey"
-                    />
-                  </div>
-                  <div class="grant-add-row">
-                    <CoarTextInput
-                      v-model="principalEmail"
-                      placeholder="…or add a user by email (before first login)"
-                      class="flex-1"
-                      @keydown.enter.prevent="addPrincipalEmail"
-                    />
-                    <CoarButton variant="secondary" size="s" @click="addPrincipalEmail">Add</CoarButton>
-                  </div>
-                  <div v-if="form.readPrincipals.length > 0" class="tag-chips">
-                    <span v-for="p in form.readPrincipals" :key="p.kind + ':' + p.id" class="tag-chip">
-                      <CoarIcon :name="p.kind === 'Group' ? 'users-round' : 'user'" class="chip-icon" />
-                      {{ principalLabel(p) }}
-                      <button class="tag-chip-remove" type="button" aria-label="Remove" @click="removePrincipal(p)">×</button>
-                    </span>
-                  </div>
-                  <p v-else class="section-desc">No one assigned yet — this product is admin-only.</p>
-                </div>
-              </div>
             </form>
+          </template>
+        </CoarTab>
+
+        <CoarTab id="access-control">
+          Access
+          <template #content>
+            <div class="tab-panel flex flex-col gap-4">
+              <CoarCheckbox
+                v-model="form.restricted"
+                label="Restricted — only assigned groups/users may view"
+              />
+              <p class="section-desc">
+                Restricted products are hidden from users without access and return 404 on
+                unauthorized requests. Orthogonal to visibility (a product can be preview + restricted).
+              </p>
+
+              <section v-if="form.restricted">
+                <div class="section-heading">Who may read</div>
+                <div class="grant-add-row">
+                  <CoarSelect
+                    :model-value="null"
+                    :options="availablePrincipalOptions"
+                    placeholder="Add a group or user…"
+                    searchable
+                    class="flex-1"
+                    @update:model-value="addPrincipalByKey"
+                  />
+                </div>
+                <div class="grant-add-row">
+                  <CoarTextInput
+                    v-model="principalEmail"
+                    placeholder="…or add a user by email (before first login)"
+                    class="flex-1"
+                    @keydown.enter.prevent="addPrincipalEmail"
+                  />
+                  <CoarButton variant="secondary" size="s" @click="addPrincipalEmail">Add</CoarButton>
+                </div>
+                <div v-if="form.readPrincipals.length > 0" class="tag-chips">
+                  <span v-for="p in form.readPrincipals" :key="p.kind + ':' + p.id" class="tag-chip">
+                    <CoarIcon :name="p.kind === 'Group' ? 'users-round' : 'user'" class="chip-icon" />
+                    {{ principalLabel(p) }}
+                    <button class="tag-chip-remove" type="button" aria-label="Remove" @click="removePrincipal(p)">×</button>
+                  </span>
+                </div>
+                <p v-else class="section-desc">No one assigned yet — this product is admin-only.</p>
+              </section>
+            </div>
           </template>
         </CoarTab>
 
@@ -537,25 +542,6 @@ async function onDeleteVersion(version: string) {
 
 .mt-2 { margin-top: 8px; }
 .mb-3 { margin-bottom: 12px; }
-
-.access-block {
-  border-top: 1px solid var(--coar-border-neutral-tertiary);
-  padding-top: 12px;
-}
-
-.access-desc {
-  margin: 8px 0 0 26px;
-}
-
-.access-desc a {
-  color: var(--coar-text-accent-primary);
-  text-decoration: none;
-}
-.access-desc a:hover { text-decoration: underline; }
-
-.access-grants {
-  margin: 14px 0 0 26px;
-}
 
 .grant-add-row {
   display: flex;
