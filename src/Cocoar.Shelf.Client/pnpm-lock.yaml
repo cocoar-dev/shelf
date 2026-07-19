@@ -14,6 +14,9 @@ importers:
       '@cocoar/vue-fragment-parser':
         specifier: 2.17.1
         version: 2.17.1(@cocoar/vue-ui@2.17.1(vue-router@5.2.0(@vue/compiler-sfc@3.5.40)(pinia@4.0.2(@vue/devtools-api@8.1.5)(typescript@6.0.3)(vue@3.5.40(typescript@6.0.3)))(rolldown@1.1.5)(vite@8.1.5(jiti@2.7.0)(yaml@2.9.0))(vue@3.5.40(typescript@6.0.3)))(vue@3.5.40(typescript@6.0.3)))(vue-router@5.2.0(@vue/compiler-sfc@3.5.40)(pinia@4.0.2(@vue/devtools-api@8.1.5)(typescript@6.0.3)(vue@3.5.40(typescript@6.0.3)))(rolldown@1.1.5)(vite@8.1.5(jiti@2.7.0)(yaml@2.9.0))(vue@3.5.40(typescript@6.0.3)))(vue@3.5.40(typescript@6.0.3))
+      '@cocoar/vue-map':
+        specifier: 2.17.1
+        version: 2.17.1(@cocoar/vue-ui@2.17.1(vue-router@5.2.0(@vue/compiler-sfc@3.5.40)(pinia@4.0.2(@vue/devtools-api@8.1.5)(typescript@6.0.3)(vue@3.5.40(typescript@6.0.3)))(rolldown@1.1.5)(vite@8.1.5(jiti@2.7.0)(yaml@2.9.0))(vue@3.5.40(typescript@6.0.3)))(vue@3.5.40(typescript@6.0.3)))(vue@3.5.40(typescript@6.0.3))
       '@cocoar/vue-script-editor':
         specifier: 2.17.1
         version: 2.17.1(monaco-editor@0.55.1)(vue@3.5.40(typescript@6.0.3))
@@ -120,6 +123,15 @@ packages:
     resolution: {integrity: sha512-uPY7V4Ij0QuXOMRucd2QV9QOUnFuCMGLaFE0R1imE4OM+GqKBTQKgsIGkuB2Xn7PkgN28GL9OS6RVGvIEWOCqg==}
     peerDependencies:
       vue: ^3.5.0
+
+  '@cocoar/vue-map@2.17.1':
+    resolution: {integrity: sha512-kTuEg3/lciuhf0lgWLczPuBEjpdS6/anXalfg4XKUsKE6PDFTEQeazX1wo3iYaP2nGHoUkrlRS0qrfrnkbF+FQ==}
+    peerDependencies:
+      '@cocoar/vue-ui': 2.17.1
+      vue: ^3.5.0
+    peerDependenciesMeta:
+      '@cocoar/vue-ui':
+        optional: true
 
   '@cocoar/vue-script-editor@2.17.1':
     resolution: {integrity: sha512-untRHzKtOnJpD57IObaE0NOk5cGtvXtjnyxKPflPS9dnfhpaVg2d1UEkj5TLbwaZgFh/Fzb/AkW1po8xIQHaPA==}
@@ -551,6 +563,9 @@ packages:
     engines: {node: '>=6'}
     hasBin: true
 
+  leaflet@1.9.4:
+    resolution: {integrity: sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA==}
+
   lightningcss-android-arm64@1.32.0:
     resolution: {integrity: sha512-YK7/ClTt4kAK0vo6w3X+Pnm0D2cf2vPHbhOXdoNti1Ga0al1P4TBZhwjATvjNwLEBCnKvjJc2jQgHXH0NEwlAg==}
     engines: {node: '>= 12.0.0'}
@@ -923,6 +938,13 @@ snapshots:
   '@cocoar/vue-localization@2.17.1(vue@3.5.40(typescript@6.0.3))':
     dependencies:
       vue: 3.5.40(typescript@6.0.3)
+
+  '@cocoar/vue-map@2.17.1(@cocoar/vue-ui@2.17.1(vue-router@5.2.0(@vue/compiler-sfc@3.5.40)(pinia@4.0.2(@vue/devtools-api@8.1.5)(typescript@6.0.3)(vue@3.5.40(typescript@6.0.3)))(rolldown@1.1.5)(vite@8.1.5(jiti@2.7.0)(yaml@2.9.0))(vue@3.5.40(typescript@6.0.3)))(vue@3.5.40(typescript@6.0.3)))(vue@3.5.40(typescript@6.0.3))':
+    dependencies:
+      leaflet: 1.9.4
+      vue: 3.5.40(typescript@6.0.3)
+    optionalDependencies:
+      '@cocoar/vue-ui': 2.17.1(vue-router@5.2.0(@vue/compiler-sfc@3.5.40)(pinia@4.0.2(@vue/devtools-api@8.1.5)(typescript@6.0.3)(vue@3.5.40(typescript@6.0.3)))(rolldown@1.1.5)(vite@8.1.5(jiti@2.7.0)(yaml@2.9.0))(vue@3.5.40(typescript@6.0.3)))(vue@3.5.40(typescript@6.0.3))
 
   '@cocoar/vue-script-editor@2.17.1(monaco-editor@0.55.1)(vue@3.5.40(typescript@6.0.3))':
     dependencies:
@@ -1317,6 +1339,8 @@ snapshots:
   jsesc@3.1.0: {}
 
   json5@2.2.3: {}
+
+  leaflet@1.9.4: {}
 
   lightningcss-android-arm64@1.32.0:
     optional: true
