@@ -4,6 +4,31 @@ All notable changes to Shelf will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.0] — 2026-07-19
+
+Access control for restricted documentation, a much richer analytics dashboard,
+and a unified app shell. Backwards-compatible: existing products stay public and
+nothing changes until you mark a product restricted.
+
+### Added
+
+- **Restricted products & access control** — a product can be marked *restricted*: it is then hidden from anyone without a read grant and returns `404` on unauthorized access (no existence leak); anonymous visitors are sent to login, admins see everything. Orthogonal to visibility, so a product can be preview + restricted.
+- **Permission groups** — groups grant read access to restricted products and, optionally, Shelf adminship. Membership is either an explicit email list (stageable before a user's first login) or **auto-computed** from a sandboxed JsEval predicate over the user's login claims (e.g. `user.email.endsWith('@cocoar.dev')`), recomputed at login / on save / on demand. Managed under Administration → Groups, with a script dry-run.
+- **Product-side access grants** — assign who may read a restricted product directly on the product (Access tab): both **groups and individual users** are principals and can be granted. Users are keyed by email so access can be staged before their first login.
+- **Detailed analytics dashboard** — an interactive **world map** of visitor cities (bubbles by volume), country and city breakdowns with **flags and full names**, browser / OS / language / referrer breakdowns, per-product filtering and an IP-exclude filter. All aggregation happens server-side.
+- **Groups & principals API** — `GET/POST/PUT/DELETE /_api/groups`, `POST /_api/groups/recalculate`, `POST /_api/groups/test-script`, `GET /_api/principals`.
+
+### Changed
+
+- **Unified app shell** — the public landing page and the admin UI now share one shell: the same header everywhere (with dark/light toggle), the admin sidebar for logged-in admins on every page, and dark mode working on the landing page too.
+- **Analytics summary** now returns cities, geolocated map points, and browser/OS/language/referrer breakdowns; the access log stores visitor lat/lng and shows country flags.
+- Groups live under Administration alongside Users.
+
+### Security
+
+- **Product writes via the admin cookie now require admin.** Previously any authenticated (JIT-provisioned) user could create, update or delete products through the cookie path; this is now gated to admins. The CI/CD Bearer API-key path is unchanged.
+- Admin can additionally be granted through an `IsAdminGroup` permission group (in addition to the `shelf:admin` token permission and the `Modgud.Admins` allowlist).
+
 ## [2.0.0] — 2026-07-18
 
 Shelf 2.0 turns the standalone file-only server into a modgud-federated,

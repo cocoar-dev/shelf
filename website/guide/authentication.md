@@ -12,13 +12,13 @@ Shelf has two separate authentication surfaces:
 
 ## Admin Login (Modgud Federation)
 
-Administrators sign in to the [Admin UI](./admin-ui.md) with their email address and a one-time code:
+Login is the standard **OpenID Connect authorization-code flow** (code + PKCE):
 
-1. Enter your email on the login screen
-2. Modgud emails you a 6-digit code
-3. Enter the code — Shelf establishes a cookie session (`shelf.auth`)
+1. Visiting `/login` (or any admin page) redirects the browser to Modgud's login page
+2. You authenticate on Modgud (password, email code, passkey — Modgud's choice)
+3. Modgud redirects back to `/signin-oidc`; Shelf mints a cookie session (`shelf.auth`)
 
-Behind the scenes Shelf acts as a backend-for-frontend: the browser never talks to Modgud directly. The backend redeems the code server-to-server at Modgud's token endpoint and mints a normal cookie session keyed to the Modgud identity. Users are created on first login automatically — there is no local user registration or password management.
+Shelf acts as a backend-for-frontend: tokens stay server-side and the cookie is the session. An existing Modgud browser session signs you in **silently** — single sign-on across Cocoar apps. Users are created on first login automatically; there is no local user registration or password management. `/logout` ends both the Shelf cookie and the Modgud session.
 
 ### Configuration
 
@@ -34,16 +34,21 @@ Federation is configured in the `Modgud` section (see [Configuration](./configur
 | `Modgud.AdminPermission` | `Shelf__Modgud__AdminPermission` | Permission that grants admin (default `shelf:admin`) |
 | `Modgud.Admins` | — | Email allowlist that is always admin (no-lockout floor) |
 
-In Modgud, register an Application `shelf` with a `shelf:admin` permission, an OAuth API + scope `shelf`, and a confidential client with the `urn:cocoar:otp` grant and JWT access tokens.
+In Modgud, register an Application `shelf` with a `shelf:admin` permission, an OAuth API + scope `shelf`, and a confidential client with the `authorization_code` grant, the `/signin-oidc` + `/signout-callback-oidc` redirect URIs, all six scopes and JWT access tokens.
 
 ### Who Is an Admin?
 
-A signed-in user is an administrator if either:
+A signed-in user is an administrator if any of:
 
 - their Modgud identity carries the `shelf:admin` permission (via Modgud roles/groups), or
-- their email is listed in `Modgud.Admins` — useful as a bootstrap before Modgud RBAC is set up
+- their email is listed in `Modgud.Admins` — useful as a bootstrap before Modgud RBAC is set up, or
+- they belong to a Shelf permission group marked *admin group* (see [Access Control](./admin-ui.md#access-control))
 
-Non-admin users can sign in and manage products, but the Administration area (users, access log, GeoIP, global settings) and analytics are admin-only.
+The Admin UI is admin-only in practice: product management, groups, analytics and the Administration area all require admin. A signed-in non-admin has access only to restricted products they've been granted (see below) and their own profile.
+
+## Access Control (Restricted Products)
+
+By default every product is public. A product can be marked **restricted** — it is then hidden from anyone without a read grant and returns `404` on unauthorized access. Access is granted to **principals** (permission groups and/or individual users) on the product's Access tab. Full details, including auto-membership scripting, are in [Admin UI → Access Control](./admin-ui.md#access-control).
 
 ## API Keys (CI/CD)
 
@@ -73,14 +78,13 @@ Admins can view, generate, replace and remove keys in the Admin UI. Keys authori
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `POST` | `/_api/auth/otp/request` | Ask Modgud to email a login code |
-| `POST` | `/_api/auth/otp/verify` | Redeem the code, receive the session cookie |
-| `POST` | `/_api/auth/logout` | Clear the session cookie |
+| `GET` | `/login` | Challenge Modgud (OIDC). Server route, not under `/_api` |
+| `GET` | `/logout` | End the Shelf cookie **and** the Modgud session |
 | `GET` | `/_api/auth/me` | Current auth status, admin flag and permissions |
 
 ## Protected Endpoints
 
-Product and version write endpoints accept a cookie session **or** a Bearer API key:
+Product and version write endpoints accept an **admin** cookie session **or** a Bearer API key:
 
 | Method | Path |
 |--------|------|
@@ -90,6 +94,10 @@ Product and version write endpoints accept a cookie session **or** a Bearer API 
 | `POST` | `/_api/products/{product}/versions/{version}` |
 | `DELETE` | `/_api/products/{product}/versions/{version}` |
 
+::: warning
+The cookie path requires **admin**. A non-admin signed-in session cannot write products; use a Bearer API key for CI/CD. (Before 2.1 any authenticated cookie could write — this is now gated.)
+:::
+
 Admin-only endpoints (cookie session with admin rights required):
 
 | Method | Path |
@@ -98,6 +106,8 @@ Admin-only endpoints (cookie session with admin rights required):
 | `GET` | `/_api/products/{product}/api-key` |
 | `GET/PUT/DELETE` | `/_api/users/…` |
 | `GET/POST` | `/_api/analytics/…` |
+| `GET/POST/PUT/DELETE` | `/_api/groups/…` |
+| `GET` | `/_api/principals` |
 
 ## Error Responses
 
