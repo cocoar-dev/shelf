@@ -27,7 +27,7 @@ public sealed partial class GeoIpService : IDisposable
         TryLoadExisting();
     }
 
-    public (string? CountryCode, string? Country, string? City, string? Region)? Lookup(string ip)
+    public (string? CountryCode, string? Country, string? City, string? Region, double? Latitude, double? Longitude)? Lookup(string ip)
     {
         if (string.IsNullOrEmpty(ip) || !IPAddress.TryParse(ip, out var addr))
             return null;
@@ -49,7 +49,9 @@ public sealed partial class GeoIpService : IDisposable
                     response?.Country?.IsoCode,
                     response?.Country?.Name,
                     response?.City?.Name,
-                    response?.MostSpecificSubdivision?.Name
+                    response?.MostSpecificSubdivision?.Name,
+                    response?.Location?.Latitude,
+                    response?.Location?.Longitude
                 );
             }
         }
