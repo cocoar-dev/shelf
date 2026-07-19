@@ -1,7 +1,7 @@
 import { http } from './http';
 import type {
   Product, ProductVersions, CreateProductRequest, UpdateProductRequest,
-  GroupSummary, GroupDetail, GroupUpsertRequest, ScriptTestResult,
+  GroupSummary, GroupDetail, GroupUpsertRequest, ScriptTestResult, Principal,
 } from '../models/shelf.models';
 
 export const shelfApi = {
@@ -28,4 +28,7 @@ export const shelfApi = {
   recalculateGroups: () => http.post<{ ok: boolean }>('/groups/recalculate'),
   testGroupScript: (req: { script: string; userId?: string; email?: string }) =>
     http.post<ScriptTestResult>('/groups/test-script', req),
+
+  // Assignable principals (groups + users) for the product access picker.
+  getPrincipals: () => http.get<Principal[]>('/principals'),
 };

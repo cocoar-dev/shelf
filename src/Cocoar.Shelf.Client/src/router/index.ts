@@ -32,21 +32,6 @@ export const router = createRouter({
             ],
           },
         },
-        {
-          path: 'groups',
-          component: () => import('@/views/groups/GroupListView.vue'),
-          meta: {
-            admin: true,
-            routedFragments: [
-              {
-                type: 'modal',
-                path: ':id',
-                component: () => import('@/views/groups/GroupFormModal.vue'),
-                overlayOptions: { size: { height: '80vh' } },
-              },
-            ],
-          },
-        },
         { path: 'profile', component: () => import('@/views/ProfileView.vue') },
         {
           path: 'analytics',
@@ -61,6 +46,20 @@ export const router = createRouter({
             { path: '', redirect: '/admin/settings/general' },
             { path: 'general', component: () => import('@/views/admin/GeneralSettingsView.vue') },
             { path: 'users', component: () => import('@/views/admin/UserListView.vue') },
+            {
+              path: 'groups',
+              component: () => import('@/views/groups/GroupListView.vue'),
+              meta: {
+                routedFragments: [
+                  {
+                    type: 'modal',
+                    path: ':id',
+                    component: () => import('@/views/groups/GroupFormModal.vue'),
+                    overlayOptions: { size: { height: '80vh' } },
+                  },
+                ],
+              },
+            },
             { path: 'access-log', component: () => import('@/views/admin/AccessLogView.vue') },
             { path: 'geoip', component: () => import('@/views/admin/GeoIpView.vue') },
           ],

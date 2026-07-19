@@ -1,13 +1,12 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import {
-  CoarTextInput, CoarSelect, CoarCheckbox, CoarMultiSelect, CoarNote, CoarButton,
-  CoarFormField, CoarTabGroup, CoarTab, CoarTable, CoarTag,
+  CoarTextInput, CoarSelect, CoarCheckbox, CoarNote, CoarButton,
+  CoarFormField, CoarTabGroup, CoarTab, CoarTable,
 } from '@cocoar/vue-ui';
 import { CoarScriptEditor } from '@cocoar/vue-script-editor';
 import ModalLayout from '@/components/ModalLayout.vue';
 import { useGroupsStore } from '@/stores/groups.store';
-import { useProductsStore } from '@/stores/products.store';
 import { shelfApi } from '@/core/api/shelf-api';
 import { ApiError } from '@/core/api/http';
 import type { MembershipMode, GroupMember } from '@/core/models/shelf.models';
@@ -18,7 +17,6 @@ const props = defineProps<{
 }>();
 
 const groupsStore = useGroupsStore();
-const productsStore = useProductsStore();
 const isCreate = computed(() => props.id === 'create');
 const loading = ref(false);
 const saving = ref(false);
@@ -36,7 +34,6 @@ const form = ref({
   membershipMode: 'Manual' as MembershipMode,
   memberEmails: [] as string[],
   membershipScript: '',
-  readProducts: [] as string[],
   isAdminGroup: false,
 });
 
@@ -54,9 +51,6 @@ const isAuto = computed(() => form.value.membershipMode === 'Auto');
 // Hidden type context so the Monaco editor gives IntelliSense on `user` without diagnostics noise.
 const scriptPreamble =
   'declare const user: { email: string; permissions: string[]; claims: Record<string, string | string[]> };';
-
-const productOptions = computed(() =>
-  productsStore.items.map(p => ({ value: p.name, label: p.displayName || p.name })));
 
 const modalTitle = computed(() => (isCreate.value ? 'New Group' : form.value.name || props.id));
 
@@ -76,7 +70,6 @@ async function loadGroup() {
     membershipMode: group.membershipMode,
     memberEmails: [...group.memberEmails],
     membershipScript: group.membershipScript ?? '',
-    readProducts: [...group.readProducts],
     isAdminGroup: group.isAdminGroup,
   };
   autoMembers.value = group.autoMembers;
@@ -84,8 +77,6 @@ async function loadGroup() {
 }
 
 onMounted(async () => {
-  // Product read-grant options come from the products list.
-  if (productsStore.items.length === 0) productsStore.loadAll();
   if (isCreate.value) return;
   loading.value = true;
   try {
@@ -135,7 +126,6 @@ async function save() {
       membershipMode: form.value.membershipMode,
       memberEmails: form.value.memberEmails,
       membershipScript: isAuto.value ? form.value.membershipScript : undefined,
-      readProducts: form.value.readProducts,
       isAdminGroup: form.value.isAdminGroup,
     };
     if (isCreate.value) {
@@ -296,31 +286,6 @@ async function save() {
           </template>
         </CoarTab>
 
-        <CoarTab id="products">
-          Products
-          <template #content>
-            <div class="tab-panel flex flex-col gap-4">
-              <section>
-                <div class="section-heading">Read grants</div>
-                <p class="section-desc">
-                  Restricted products this group's members may read.
-                </p>
-                <CoarFormField label="Products">
-                  <CoarMultiSelect
-                    v-model="form.readProducts"
-                    :options="productOptions"
-                    placeholder="Select products…"
-                    searchable
-                    clearable
-                  />
-                </CoarFormField>
-                <div v-if="form.readProducts.length > 0" class="tag-chips">
-                  <CoarTag v-for="p in form.readProducts" :key="p" variant="accent" size="s">{{ p }}</CoarTag>
-                </div>
-              </section>
-            </div>
-          </template>
-        </CoarTab>
       </CoarTabGroup>
     </div>
     <div v-else class="flex flex-1 items-center justify-center p-8">

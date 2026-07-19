@@ -1,3 +1,19 @@
+/** A principal (group or user) that a product's read access can be granted to. */
+export type PrincipalKind = 'Group' | 'User';
+
+export interface PrincipalRef {
+  /** Group id (GUID) or user email. */
+  kind: PrincipalKind;
+  id: string;
+}
+
+/** An assignable principal from GET /principals, for the product access picker. */
+export interface Principal {
+  kind: PrincipalKind;
+  id: string;
+  displayName: string;
+}
+
 export interface Product {
   name: string;
   displayName: string | null;
@@ -6,6 +22,8 @@ export interface Product {
   visibility: string;
   /** Access control: hidden from users without a read grant, 404 on unauthorized access. */
   restricted: boolean;
+  /** Principals (groups/users) granted read access when restricted. */
+  readPrincipals: PrincipalRef[];
   tags: string[];
   showWhenEmpty: boolean;
   hasApiKey: boolean;
@@ -28,6 +46,7 @@ export interface CreateProductRequest {
   tags?: string[];
   showWhenEmpty?: boolean;
   restricted?: boolean;
+  readPrincipals?: PrincipalRef[];
   /** Per-product upload key. Write-only: responses only carry hasApiKey. */
   apiKey?: string;
 }
@@ -40,6 +59,7 @@ export interface UpdateProductRequest {
   tags?: string[];
   showWhenEmpty?: boolean;
   restricted?: boolean;
+  readPrincipals?: PrincipalRef[];
   /** undefined = keep, '' = remove, value = replace. */
   apiKey?: string;
 }
@@ -61,7 +81,6 @@ export interface GroupSummary {
   membershipMode: MembershipMode;
   memberEmails: string[];
   membershipScript: string | null;
-  readProducts: string[];
   isAdminGroup: boolean;
   autoMemberCount: number;
   membershipLastError: string | null;
@@ -80,7 +99,6 @@ export interface GroupDetail {
   membershipMode: MembershipMode;
   memberEmails: string[];
   membershipScript: string | null;
-  readProducts: string[];
   isAdminGroup: boolean;
   membershipLastError: string | null;
   /** Resolved materialized auto-members (read-only in the UI). */
@@ -93,7 +111,6 @@ export interface GroupUpsertRequest {
   membershipMode: MembershipMode;
   memberEmails?: string[];
   membershipScript?: string;
-  readProducts?: string[];
   isAdminGroup?: boolean;
 }
 

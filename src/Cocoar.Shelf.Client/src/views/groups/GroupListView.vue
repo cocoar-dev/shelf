@@ -3,11 +3,9 @@ import { computed, onMounted, ref } from 'vue';
 import { CoarDataGrid, CoarGridBuilder } from '@cocoar/vue-data-grid';
 import { CoarButton, CoarContextMenu, CoarMenuItem, CoarMenuDivider, useContextMenu, useDialog } from '@cocoar/vue-ui';
 import { useFragmentNavigation, useRoutedModals } from '@cocoar/vue-fragment-parser';
-import { useUI } from '@/composables/useUI';
 import { useGroupsStore } from '@/stores/groups.store';
 import type { GroupSummary } from '@/core/models/shelf.models';
 
-const ui = useUI();
 useRoutedModals();
 const { navigateToModal } = useFragmentNavigation();
 const groupsStore = useGroupsStore();
@@ -18,17 +16,10 @@ const viewportMenu = useContextMenu();
 const dialog = useDialog();
 const recalculating = ref(false);
 
-ui.set((ctx) => {
-  ctx.header.title = 'Groups';
-  ctx.header.subTitle = 'Grant restricted-product access and adminship';
-  ctx.header.icon = 'users-round';
-  ctx.content.container = false;
-});
-
 const rowData = computed(() => groupsStore.items);
 
 const builder = CoarGridBuilder.create<GroupSummary>()
-  .persistColumnState('shelf-groups-v1')
+  .persistColumnState('shelf-groups-v2')
   .option('getRowId', (p: any) => p.data.id)
   .rowDataRef(rowData)
   .searchHighlight()
@@ -53,8 +44,6 @@ const builder = CoarGridBuilder.create<GroupSummary>()
     (col: any) => col.field('membershipMode').header('Membership').width(130).option('minWidth', 110),
     (col: any) => col.field('members').header('Members').width(110).option('minWidth', 90)
       .option('valueGetter', (p: any) => (p.data?.memberEmails?.length ?? 0) + (p.data?.autoMemberCount ?? 0)),
-    (col: any) => col.field('readProducts').header('Read grants').width(120).option('minWidth', 100)
-      .option('valueGetter', (p: any) => p.data?.readProducts?.length ?? 0),
     (col: any) => col.field('isAdminGroup').header('Admin').width(90).option('minWidth', 80)
       .option('valueGetter', (p: any) => (p.data?.isAdminGroup ? 'yes' : '')),
   ]);

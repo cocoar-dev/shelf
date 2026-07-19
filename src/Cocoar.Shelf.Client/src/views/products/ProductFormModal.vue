@@ -2,13 +2,14 @@
 import { ref, computed, onMounted } from 'vue';
 import {
   CoarTextInput, CoarSelect, CoarCheckbox, CoarNote, CoarButton, CoarFormField,
-  CoarTabGroup, CoarTab, CoarTable, CoarTag, useDialog,
+  CoarTabGroup, CoarTab, CoarTable, CoarTag, CoarIcon, useDialog,
 } from '@cocoar/vue-ui';
 import ModalLayout from '@/components/ModalLayout.vue';
 import { useProductsStore } from '@/stores/products.store';
 import { shelfApi } from '@/core/api/shelf-api';
 import { ApiError } from '@/core/api/http';
 import { generateApiKey, copyToClipboard } from '@/core/api-key-utils';
+import type { Principal, PrincipalRef } from '@/core/models/shelf.models';
 
 const props = defineProps<{
   id: string
@@ -35,9 +36,49 @@ const form = ref({
   source: 'upload',
   visibility: 'public',
   restricted: false,
+  readPrincipals: [] as PrincipalRef[],
   tags: [] as string[],
   showWhenEmpty: false,
 });
+
+// Access: assignable principals (groups + users) for the read-grant picker.
+const principals = ref<Principal[]>([]);
+const principalEmail = ref('');
+
+function principalKey(p: PrincipalRef | Principal): string {
+  return `${p.kind}:${p.id}`;
+}
+
+const availablePrincipalOptions = computed(() => {
+  const chosen = new Set(form.value.readPrincipals.map(principalKey));
+  return principals.value
+    .filter(p => !chosen.has(principalKey(p)))
+    .map(p => ({ value: principalKey(p), label: `${p.displayName} · ${p.kind}` }));
+});
+
+function principalLabel(p: PrincipalRef): string {
+  return principals.value.find(x => x.kind === p.kind && x.id === p.id)?.displayName ?? p.id;
+}
+
+function addPrincipalByKey(key: string | null | undefined) {
+  if (!key) return;
+  const match = principals.value.find(p => principalKey(p) === key);
+  if (match && !form.value.readPrincipals.some(p => principalKey(p) === key)) {
+    form.value.readPrincipals.push({ kind: match.kind, id: match.id });
+  }
+}
+
+function addPrincipalEmail() {
+  const email = principalEmail.value.trim();
+  if (email && !form.value.readPrincipals.some(p => p.kind === 'User' && p.id.toLowerCase() === email.toLowerCase())) {
+    form.value.readPrincipals.push({ kind: 'User', id: email });
+  }
+  principalEmail.value = '';
+}
+
+function removePrincipal(p: PrincipalRef) {
+  form.value.readPrincipals = form.value.readPrincipals.filter(x => principalKey(x) !== principalKey(p));
+}
 
 const tagInput = ref('');
 const hasApiKey = ref(false);
@@ -80,6 +121,7 @@ async function loadProduct() {
     source: product.source,
     visibility: product.visibility,
     restricted: product.restricted ?? false,
+    readPrincipals: [...(product.readPrincipals ?? [])],
     tags: [...(product.tags ?? [])],
     showWhenEmpty: product.showWhenEmpty ?? false,
   };
@@ -97,6 +139,9 @@ async function loadProduct() {
 }
 
 onMounted(async () => {
+  // Access picker options (groups + users). Best-effort — the modal still works without them.
+  shelfApi.getPrincipals().then(p => { principals.value = p; }).catch(() => { /* ignore */ });
+
   if (isCreate.value) return;
   loading.value = true;
   try {
@@ -140,6 +185,7 @@ async function save() {
       source: form.value.source || undefined,
       visibility: form.value.visibility,
       restricted: form.value.restricted,
+      readPrincipals: form.value.readPrincipals,
       tags: form.value.tags,
       showWhenEmpty: form.value.showWhenEmpty,
       apiKey,
@@ -256,14 +302,43 @@ async function onDeleteVersion(version: string) {
               <div class="access-block">
                 <CoarCheckbox
                   v-model="form.restricted"
-                  label="Restricted — require a group read grant to view"
+                  label="Restricted — only assigned groups/users may view"
                 />
                 <p class="section-desc access-desc">
                   Restricted products are hidden from users without access and return 404 on
-                  unauthorized requests. Grant read access to a group on the
-                  <a href="/admin/groups" target="_blank">Groups</a> page.
-                  Orthogonal to visibility (a product can be preview + restricted).
+                  unauthorized requests. Orthogonal to visibility (a product can be preview + restricted).
                 </p>
+
+                <div v-if="form.restricted" class="access-grants">
+                  <div class="section-heading">Who may read</div>
+                  <div class="grant-add-row">
+                    <CoarSelect
+                      :model-value="null"
+                      :options="availablePrincipalOptions"
+                      placeholder="Add a group or user…"
+                      searchable
+                      class="flex-1"
+                      @update:model-value="addPrincipalByKey"
+                    />
+                  </div>
+                  <div class="grant-add-row">
+                    <CoarTextInput
+                      v-model="principalEmail"
+                      placeholder="…or add a user by email (before first login)"
+                      class="flex-1"
+                      @keydown.enter.prevent="addPrincipalEmail"
+                    />
+                    <CoarButton variant="secondary" size="s" @click="addPrincipalEmail">Add</CoarButton>
+                  </div>
+                  <div v-if="form.readPrincipals.length > 0" class="tag-chips">
+                    <span v-for="p in form.readPrincipals" :key="p.kind + ':' + p.id" class="tag-chip">
+                      <CoarIcon :name="p.kind === 'Group' ? 'users-round' : 'user'" class="chip-icon" />
+                      {{ principalLabel(p) }}
+                      <button class="tag-chip-remove" type="button" aria-label="Remove" @click="removePrincipal(p)">×</button>
+                    </span>
+                  </div>
+                  <p v-else class="section-desc">No one assigned yet — this product is admin-only.</p>
+                </div>
               </div>
             </form>
           </template>
@@ -477,6 +552,22 @@ async function onDeleteVersion(version: string) {
   text-decoration: none;
 }
 .access-desc a:hover { text-decoration: underline; }
+
+.access-grants {
+  margin: 14px 0 0 26px;
+}
+
+.grant-add-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.chip-icon {
+  font-size: 0.85rem;
+  opacity: 0.75;
+}
 
 .tag-input-row {
   display: flex;

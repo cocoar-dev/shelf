@@ -39,6 +39,12 @@ function isActive(path: string): boolean {
           @clicked="router.push('/admin/settings/users')"
         />
         <CoarMenuItem
+          icon="users-round"
+          label="Groups"
+          :class="{ 'admin-menu-item--active': isActive('/admin/settings/groups') }"
+          @clicked="router.push('/admin/settings/groups')"
+        />
+        <CoarMenuItem
           icon="bar-chart-3"
           label="Access Log"
           :class="{ 'admin-menu-item--active': isActive('/admin/settings/access-log') }"
