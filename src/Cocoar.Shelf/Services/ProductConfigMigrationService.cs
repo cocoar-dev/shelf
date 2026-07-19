@@ -30,49 +30,59 @@ public sealed partial class ProductConfigMigrationService : IHostedService
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
-        var productsDir = Path.Combine(_config.CurrentValue.ConfigRoot, "products");
-
-        if (!Directory.Exists(productsDir))
-            return;
-
-        var jsonFiles = Directory.GetFiles(productsDir, "*.json");
-        if (jsonFiles.Length == 0)
-            return;
-
         await using var session = _store.LightweightSession();
+
+        // One-time seed: once seeded, the DB owns products — the JSON files are never read again, so a
+        // product deleted via the UI/API is NOT resurrected from a lingering seed file on restart.
+        if (await session.LoadAsync<SeedState>("products", cancellationToken) is not null)
+            return;
+
+        var productsDir = Path.Combine(_config.CurrentValue.ConfigRoot, "products");
+        var jsonFiles = Directory.Exists(productsDir)
+            ? Directory.GetFiles(productsDir, "*.json")
+            : [];
+
+        // Upgrade path: a DB seeded by the pre-marker version (or populated purely via the UI/API)
+        // already has products — mark it seeded WITHOUT re-importing, so previously-deleted products
+        // stay deleted.
+        var alreadyPopulated = await session.Query<ProductConfig>().AnyAsync(cancellationToken);
+
+        // Nothing to seed yet (empty DB, no seed files) — stay unseeded so a later boot with seed
+        // files can still import them once.
+        if (!alreadyPopulated && jsonFiles.Length == 0)
+            return;
+
         var imported = 0;
-
-        foreach (var file in jsonFiles)
+        if (!alreadyPopulated)
         {
-            try
+            foreach (var file in jsonFiles)
             {
-                var json = await File.ReadAllTextAsync(file, cancellationToken);
-                var config = JsonSerializer.Deserialize<ProductConfig>(json, JsonOptions);
-
-                if (config == null)
+                try
                 {
-                    LogSkipped(_logger, file, "deserialized to null");
-                    continue;
+                    var json = await File.ReadAllTextAsync(file, cancellationToken);
+                    var config = JsonSerializer.Deserialize<ProductConfig>(json, JsonOptions);
+
+                    if (config == null)
+                    {
+                        LogSkipped(_logger, file, "deserialized to null");
+                        continue;
+                    }
+
+                    session.Store(config);
+                    imported++;
                 }
-
-                var existing = await session.LoadAsync<ProductConfig>(config.Name, cancellationToken);
-                if (existing != null)
-                    continue; // Already in DB
-
-                session.Store(config);
-                imported++;
-            }
-            catch (Exception ex)
-            {
-                LogFailed(_logger, file, ex);
+                catch (Exception ex)
+                {
+                    LogFailed(_logger, file, ex);
+                }
             }
         }
+
+        session.Store(new SeedState { Id = "products", SeededAt = DateTimeOffset.UtcNow });
+        await session.SaveChangesAsync(cancellationToken);
 
         if (imported > 0)
-        {
-            await session.SaveChangesAsync(cancellationToken);
             LogCompleted(_logger, imported, jsonFiles.Length);
-        }
     }
 
     public Task StopAsync(CancellationToken cancellationToken) => Task.CompletedTask;

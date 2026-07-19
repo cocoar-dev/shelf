@@ -4,6 +4,12 @@ All notable changes to Shelf will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.1.1] — 2026-07-19
+
+### Fixed
+
+- **A deleted product no longer reappears after a restart.** The product JSON seed is now genuinely one-time: a `SeedState` marker records that the import has run, and the migration never re-reads the seed files again. Previously the seed re-imported any product that was missing from the database on every startup, so a product deleted via the UI/API was resurrected from its lingering seed file. Existing databases are marked seeded on first boot of this version without re-importing, so previously-deleted products stay deleted.
+
 ## [2.1.0] — 2026-07-19
 
 Access control for restricted documentation, a much richer analytics dashboard,
