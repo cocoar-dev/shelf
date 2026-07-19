@@ -20,6 +20,7 @@ public static partial class ApiEndpoints
         api.MapUserEndpoints();
         api.MapSettingsEndpoints();
         api.MapGroupEndpoints();
+        api.MapPrincipalEndpoints();
 
         // Test-only sign-in seam — mapped exclusively for the integration test host.
         if (options.TestAuth)
@@ -66,7 +67,7 @@ public static partial class ApiEndpoints
             var grants = await accessResolver.ResolveAsync(httpContext.User);
 
             var products = (await configService.GetAllAsync())
-                .Where(config => !config.Restricted || grants.CanRead(config.Name))
+                .Where(config => !config.Restricted || grants.CanRead(config))
                 .Select(config =>
                 {
                     var manifest = manifestService.GetManifest(config.Name);
@@ -78,6 +79,7 @@ public static partial class ApiEndpoints
                         config.Source,
                         config.Visibility,
                         config.Restricted,
+                        config.ReadPrincipals,
                         config.Tags,
                         config.ShowWhenEmpty,
                         HasApiKey = !string.IsNullOrEmpty(config.ApiKey),
@@ -108,7 +110,7 @@ public static partial class ApiEndpoints
         {
             var config = await configService.GetConfigAsync(product);
             // Restricted + no grant → 404, indistinguishable from not-registered (no existence leak).
-            if (config == null || (config.Restricted && !(await accessResolver.ResolveAsync(httpContext.User)).CanRead(product)))
+            if (config == null || (config.Restricted && !(await accessResolver.ResolveAsync(httpContext.User)).CanRead(config)))
             {
                 LogProductNotRegistered(logger, product);
                 return Results.Json(new { error = $"Product '{product}' is not registered" }, statusCode: 404);
@@ -143,7 +145,7 @@ public static partial class ApiEndpoints
         {
             var config = await configService.GetConfigAsync(product);
             // Restricted + no grant → 404, indistinguishable from not-registered (no existence leak).
-            if (config == null || (config.Restricted && !(await accessResolver.ResolveAsync(httpContext.User)).CanRead(product)))
+            if (config == null || (config.Restricted && !(await accessResolver.ResolveAsync(httpContext.User)).CanRead(config)))
             {
                 LogProductNotRegistered(logger, product);
                 return Results.Json(new { error = $"Product '{product}' is not registered" }, statusCode: 404);
@@ -158,6 +160,7 @@ public static partial class ApiEndpoints
                 config.Source,
                 config.Visibility,
                 config.Restricted,
+                config.ReadPrincipals,
                 config.Tags,
                 config.ShowWhenEmpty,
                 HasApiKey = !string.IsNullOrEmpty(config.ApiKey),
@@ -339,7 +342,8 @@ public static partial class ApiEndpoints
                 Tags = NormalizeTags(request.Tags),
                 ShowWhenEmpty = request.ShowWhenEmpty ?? false,
                 ApiKey = request.ApiKey,
-                Restricted = request.Restricted ?? false
+                Restricted = request.Restricted ?? false,
+                ReadPrincipals = NormalizePrincipals(request.ReadPrincipals)
             };
 
             await configService.CreateAsync(config);
@@ -379,7 +383,8 @@ public static partial class ApiEndpoints
                 Tags = request.Tags != null ? NormalizeTags(request.Tags) : existing.Tags,
                 ShowWhenEmpty = request.ShowWhenEmpty ?? existing.ShowWhenEmpty,
                 ApiKey = request.ApiKey ?? existing.ApiKey,
-                Restricted = request.Restricted ?? existing.Restricted
+                Restricted = request.Restricted ?? existing.Restricted,
+                ReadPrincipals = request.ReadPrincipals != null ? NormalizePrincipals(request.ReadPrincipals) : existing.ReadPrincipals
             };
 
             await configService.UpdateAsync(config);
@@ -531,4 +536,12 @@ public static partial class ApiEndpoints
 
     private static IReadOnlyList<string> NormalizeTags(IReadOnlyList<string>? tags) =>
         tags == null ? [] : tags.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Order().ToList();
+
+    // Trim, drop blanks, dedupe (user emails case-insensitively).
+    private static IReadOnlyList<PrincipalRef> NormalizePrincipals(IReadOnlyList<PrincipalRef>? principals) =>
+        principals == null ? [] : principals
+            .Where(p => !string.IsNullOrWhiteSpace(p.Id))
+            .Select(p => new PrincipalRef(p.Kind, p.Id.Trim()))
+            .DistinctBy(p => (p.Kind, p.Kind == PrincipalKind.User ? p.Id.ToLowerInvariant() : p.Id))
+            .ToList();
 }

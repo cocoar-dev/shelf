@@ -18,11 +18,19 @@ public class AccessControlTests
 
     public AccessControlTests(ShelfFixture fixture) => _fixture = fixture;
 
-    private void StoreProduct(string name, bool restricted, string visibility = "public")
+    private void StoreProduct(string name, bool restricted, params PrincipalRef[] readPrincipals)
     {
         var store = _fixture.Services.GetRequiredService<IDocumentStore>();
         using var session = store.LightweightSession();
-        session.Store(new ProductConfig { Name = name, DisplayName = name, Source = "upload", Visibility = visibility, Restricted = restricted });
+        session.Store(new ProductConfig
+        {
+            Name = name,
+            DisplayName = name,
+            Source = "upload",
+            Visibility = "public",
+            Restricted = restricted,
+            ReadPrincipals = readPrincipals.ToList(),
+        });
         session.SaveChangesAsync().GetAwaiter().GetResult();
     }
 
@@ -78,21 +86,29 @@ public class AccessControlTests
     [Fact]
     public async Task RestrictedDocs_GroupMemberByEmail_IsServed()
     {
+        var groupId = Guid.NewGuid();
+        StoreGroup(new Group { Id = groupId, Name = "ac-member-grp", MemberEmails = ["ac-insider@shelf.test"] });
         _fixture.CreateVersionDirectory("ac-member", "v1", "<html>secret</html>");
-        StoreProduct("ac-member", restricted: true);
-        StoreGroup(new Group
-        {
-            Id = Guid.NewGuid(),
-            Name = "ac-member-grp",
-            MemberEmails = ["ac-insider@shelf.test"],
-            ReadProducts = ["ac-member"],
-        });
+        StoreProduct("ac-member", restricted: true, PrincipalRef.ForGroup(groupId));
         var client = await _fixture.CreateSignedInClientAsync("ac-insider@shelf.test");
 
         var response = await client.GetAsync("/ac-member/v1/");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         Assert.Contains("secret", await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task RestrictedDocs_DirectUserGrant_IsServed()
+    {
+        _fixture.CreateVersionDirectory("ac-direct-user", "v1", "<html>secret</html>");
+        // Grant a single user directly (by email) — no group needed.
+        StoreProduct("ac-direct-user", restricted: true, PrincipalRef.ForUser("ac-direct@shelf.test"));
+        var client = await _fixture.CreateSignedInClientAsync("ac-direct@shelf.test");
+
+        var response = await client.GetAsync("/ac-direct-user/v1/");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
     }
 
     [Fact]
@@ -184,18 +200,19 @@ public class AccessControlTests
     {
         var admin = await _fixture.CreateSignedInClientAsync("ac-auto-admin@shelf.test", admin: true);
 
-        // Auto group: predicate matches by email domain, grants read on the restricted product.
+        // Auto group: predicate matches by email domain.
         var create = await admin.PostAsJsonAsync("/_api/groups", new
         {
             name = "ac-auto-grp",
             membershipMode = "Auto",
             membershipScript = "user.email.endsWith('@ac-auto.test')",
-            readProducts = new[] { "ac-auto-prod" },
         });
         Assert.Equal(HttpStatusCode.Created, create.StatusCode);
+        var group = await create.Content.ReadFromJsonAsync<GroupIdDto>();
 
+        // Grant the group read access on the restricted product (product-side principal grant).
         _fixture.CreateVersionDirectory("ac-auto-prod", "v1", "<html>auto-secret</html>");
-        StoreProduct("ac-auto-prod", restricted: true);
+        StoreProduct("ac-auto-prod", restricted: true, PrincipalRef.ForGroup(group!.Id));
 
         // Matching user signs in → login recompute materializes membership.
         var member = await _fixture.CreateSignedInClientAsync("someone@ac-auto.test");
@@ -238,4 +255,5 @@ public class AccessControlTests
     private sealed record ProductDto(string Name, bool Restricted);
     private sealed record MeDto(bool IsAdmin);
     private sealed record TestScriptDto(bool Matched, string? Error);
+    private sealed record GroupIdDto(Guid Id);
 }

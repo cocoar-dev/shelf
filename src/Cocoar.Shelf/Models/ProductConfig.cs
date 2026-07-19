@@ -20,6 +20,12 @@ public class ProductConfig
     /// </summary>
     public bool Restricted { get; set; }
 
+    /// <summary>
+    /// Principals (groups and/or individual users) granted read access when <see cref="Restricted"/>.
+    /// Product-side, principal-oriented grant — you pick who may read here, next to the toggle.
+    /// </summary>
+    public IReadOnlyList<PrincipalRef> ReadPrincipals { get; set; } = [];
+
     public IReadOnlyList<string> Tags { get; set; } = [];
 
     public bool ShowWhenEmpty { get; set; }

@@ -71,7 +71,7 @@ public partial class DocsRoutingMiddleware
 
         // Access control v2: restricted products are gated before anything is served (HTML and assets).
         var productConfig = await _productConfig.GetConfigAsync(product);
-        if (productConfig?.Restricted == true && !await HasReadAccessAsync(context, product))
+        if (productConfig?.Restricted == true && !await HasReadAccessAsync(context, productConfig))
         {
             DenyRestricted(context);
             return;
@@ -191,7 +191,7 @@ public partial class DocsRoutingMiddleware
         });
     }
 
-    private static async Task<bool> HasReadAccessAsync(HttpContext context, string product)
+    private static async Task<bool> HasReadAccessAsync(HttpContext context, ProductConfig product)
     {
         var resolver = context.RequestServices.GetRequiredService<IAccessResolver>();
         var grants = await resolver.ResolveAsync(context.User);

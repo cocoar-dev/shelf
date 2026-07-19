@@ -11,7 +11,6 @@ public record GroupUpsertRequest(
     string? MembershipMode,
     IReadOnlyList<string>? MemberEmails,
     string? MembershipScript,
-    IReadOnlyList<string>? ReadProducts,
     bool? IsAdminGroup);
 
 /// <summary>Dry-run request: evaluate a membership script against one user (by id or email).</summary>
@@ -64,7 +63,6 @@ public static class GroupEndpoints
             MembershipMode = group.MembershipMode.ToString(),
             group.MemberEmails,
             group.MembershipScript,
-            group.ReadProducts,
             group.IsAdminGroup,
             group.MembershipLastError,
             AutoMembers = autoMembers,
@@ -158,7 +156,6 @@ public static class GroupEndpoints
         MembershipMode = g.MembershipMode.ToString(),
         g.MemberEmails,
         g.MembershipScript,
-        g.ReadProducts,
         g.IsAdminGroup,
         AutoMemberCount = g.AutoMemberUserIds.Count,
         g.MembershipLastError,
@@ -171,8 +168,6 @@ public static class GroupEndpoints
         group.MembershipMode = mode;
         group.MemberEmails = NormalizeEmails(request.MemberEmails);
         group.MembershipScript = mode == Models.MembershipMode.Auto ? request.MembershipScript : null;
-        group.ReadProducts = request.ReadProducts?.Where(p => !string.IsNullOrWhiteSpace(p))
-            .Select(p => p.Trim()).Distinct(StringComparer.OrdinalIgnoreCase).Order().ToList() ?? [];
         group.IsAdminGroup = request.IsAdminGroup ?? false;
     }
 

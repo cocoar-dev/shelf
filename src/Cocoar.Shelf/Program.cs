@@ -223,6 +223,11 @@ if (modgudConfigured)
     });
 }
 
+// Serialize enums as strings in the HTTP API (e.g. PrincipalRef.Kind → "Group"/"User"), so the
+// product access grants round-trip legibly between the SPA and the API.
+builder.Services.ConfigureHttpJsonOptions(o =>
+    o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+
 builder.Services.AddTransient<IClaimsTransformation, ModgudClaimsTransformation>();
 
 builder.Services.AddAuthorization(options =>

@@ -21,13 +21,17 @@ public enum MembershipMode
 /// persisted login claims snapshot. Email-based explicit membership lets grants be staged before a
 /// user's first login (the local <see cref="UserDocument"/> is JIT-provisioned).</para>
 /// </summary>
-public class Group
+public class Group : IPrincipal
 {
     public Guid Id { get; set; }
 
     public required string Name { get; set; }
 
     public string? Description { get; set; }
+
+    PrincipalKind IPrincipal.PrincipalKind => PrincipalKind.Group;
+    string IPrincipal.PrincipalId => Id.ToString();
+    string IPrincipal.PrincipalDisplayName => Name;
 
     public MembershipMode MembershipMode { get; set; } = MembershipMode.Manual;
 
@@ -38,9 +42,6 @@ public class Group
     /// <summary><see cref="MembershipMode.Auto"/> only: a JsEval predicate over the user claims
     /// snapshot returning a bool. Ignored in <see cref="MembershipMode.Manual"/> mode.</summary>
     public string? MembershipScript { get; set; }
-
-    /// <summary>Product names this group grants read access to (restricted products).</summary>
-    public IReadOnlyList<string> ReadProducts { get; set; } = [];
 
     /// <summary>
     /// Materialized ids of users matched by <see cref="MembershipScript"/> in <see

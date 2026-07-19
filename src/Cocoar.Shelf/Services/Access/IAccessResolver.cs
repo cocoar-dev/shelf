@@ -1,23 +1,35 @@
 using System.Security.Claims;
+using Cocoar.Shelf.Models;
 
 namespace Cocoar.Shelf.Services.Access;
 
 /// <summary>
-/// The effective grants of a principal, computed per request against the DB (Access Control v2):
-/// whether they are a Shelf admin and which restricted products they may read. Cheap to consult
-/// repeatedly — resolution is memoized per request.
+/// The effective grant context of a principal, computed per request against the DB (Access Control
+/// v2): whether they are a Shelf admin, and the identity (group memberships + email) needed to test a
+/// product's read-principals. Cheap to consult repeatedly — resolution is memoized per request.
 /// </summary>
-public sealed record AccessGrants(bool IsAdmin, IReadOnlySet<string> ReadableProducts)
+public sealed record AccessGrants(bool IsAdmin, IReadOnlySet<Guid> GroupIds, string? Email)
 {
-    /// <summary>True if the principal may read <paramref name="product"/> (admins read everything).</summary>
-    public bool CanRead(string product) => IsAdmin || ReadableProducts.Contains(product);
+    /// <summary>True if the principal may read <paramref name="product"/>: admin, or listed among the
+    /// product's read-principals (a group they belong to, or their own email).</summary>
+    public bool CanRead(ProductConfig product)
+    {
+        if (IsAdmin)
+            return true;
 
-    public static readonly AccessGrants None =
-        new(false, new HashSet<string>(StringComparer.OrdinalIgnoreCase));
+        return product.ReadPrincipals.Any(p => p.Kind switch
+        {
+            PrincipalKind.Group => Guid.TryParse(p.Id, out var groupId) && GroupIds.Contains(groupId),
+            PrincipalKind.User => Email is not null && string.Equals(p.Id, Email, StringComparison.OrdinalIgnoreCase),
+            _ => false,
+        });
+    }
+
+    public static readonly AccessGrants None = new(false, new HashSet<Guid>(), null);
 }
 
 /// <summary>
-/// Resolves a principal's effective access from group grants, the token permission and the admin
+/// Resolves a principal's grant context from group memberships, the token permission and the admin
 /// allowlist — the single per-request authority the enforcement points (docs middleware, product
 /// API, admin policy) consult. Revocation takes effect immediately (next request), not at next login.
 /// </summary>

@@ -32,7 +32,7 @@ public sealed class AccessResolver(IGroupService groups, ShelfOptions options) :
         var isAdmin = AdminCheck.IsAdmin(principal, options);
         var email = AdminCheck.Email(principal);
         var userId = CurrentUser.Id(principal);
-        var readable = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var groupIds = new HashSet<Guid>();
 
         foreach (var group in await groups.GetAllAsync())
         {
@@ -42,12 +42,11 @@ public sealed class AccessResolver(IGroupService groups, ShelfOptions options) :
             if (!isMember)
                 continue;
 
+            groupIds.Add(group.Id);
             if (group.IsAdminGroup)
                 isAdmin = true;
-            foreach (var product in group.ReadProducts)
-                readable.Add(product);
         }
 
-        return _cached = new AccessGrants(isAdmin, readable);
+        return _cached = new AccessGrants(isAdmin, groupIds, email);
     }
 }
