@@ -3,7 +3,7 @@ import { onMounted, ref } from 'vue';
 import { CoarDataGrid, CoarGridBuilder } from '@cocoar/vue-data-grid';
 import { CoarContextMenu, CoarMenuItem, useContextMenu } from '@cocoar/vue-ui';
 import { http } from '@/core/api/http';
-import { countryFlag, countryName } from '@/core/geo';
+import { countryName, flagClass } from '@/core/geo';
 
 interface AccessLogRow {
   id: string;
@@ -38,7 +38,9 @@ const builder = CoarGridBuilder.create<AccessLogRow>()
     (col: any) => col.field('version').header('Version').width(90).option('minWidth', 85),
     (col: any) => col.field('path').header('Path').flex(1).option('minWidth', 140),
     (col: any) => col.field('country').header('Country').width(160).option('minWidth', 120)
-      .option('valueFormatter', (p: any) => p.value ? `${countryFlag(p.value)} ${countryName(p.value)}` : ''),
+      .option('cellRenderer', (p: any) => p.value
+        ? `<span class="${flagClass(p.value)}" style="margin-right:6px;border-radius:2px;vertical-align:-1px;"></span>${countryName(p.value)}`
+        : ''),
     (col: any) => col.field('city').header('City').width(120).option('minWidth', 90),
     (col: any) => col.field('userAgent').header('User Agent').flex(1).option('minWidth', 200),
   ]);

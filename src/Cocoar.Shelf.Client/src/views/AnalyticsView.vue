@@ -160,7 +160,7 @@ import { CoarMap, type MapData, type MapConfig } from '@cocoar/vue-map';
 import { useUI } from '@/composables/useUI';
 import { http } from '@/core/api/http';
 import { shelfApi } from '@/core/api/shelf-api';
-import { countryFlag, countryName } from '@/core/geo';
+import { countryName } from '@/core/geo';
 import TopList from '@/components/TopList.vue';
 
 interface AnalyticsSummary {
@@ -214,13 +214,15 @@ function itemsOf<T>(list: T[] | undefined, label: (t: T) => string, count: (t: T
 
 const countryItems = computed(() =>
   (summary.value?.topCountries ?? []).map(c => ({
-    label: `${countryFlag(c.country)}  ${countryName(c.country)}`,
+    flag: c.country ?? undefined,
+    label: countryName(c.country),
     count: c.count,
   })));
 
 const cityItems = computed(() =>
   (summary.value?.topCities ?? []).map(c => ({
-    label: `${countryFlag(c.country)}  ${c.city ?? '—'}`,
+    flag: c.country ?? undefined,
+    label: c.city ?? '—',
     count: c.count,
   })));
 
