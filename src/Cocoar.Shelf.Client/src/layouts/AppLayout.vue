@@ -21,9 +21,9 @@ const route = useRoute();
 const { state: ui } = provideUI();
 const authStore = useAuthStore();
 
-// The sidebar is the admin navigation — shown only inside the admin area (which requires auth).
-// The public landing (`/`) uses the same header/shell but no sidebar.
-const isAdminArea = computed(() => route.path.startsWith('/admin'));
+// The sidebar is the admin navigation — shown whenever the user is a logged-in admin, on every
+// page including the public landing. Anonymous visitors and non-admin users get no sidebar.
+const showSidebar = computed(() => authStore.user?.isAdmin === true);
 
 const collapsed = ref(
   localStorage.getItem('sidebar-collapsed') === 'true',
@@ -67,11 +67,11 @@ function logout() {
     <header v-if="ui.header.show" class="main-header">
       <button
         class="header-logo"
-        :style="isAdminArea ? { width: collapsed ? '4rem' : '16rem' } : { padding: '0 1.25rem', gap: '0.6rem' }"
+        :style="showSidebar ? { width: collapsed ? '4rem' : '16rem' } : { padding: '0 1.25rem', gap: '0.6rem' }"
         @click="router.push('/')"
       >
         <CoarIcon name="book-open" />
-        <span v-if="!isAdminArea || !collapsed" class="text-sm font-medium tracking-wide opacity-80">Shelf</span>
+        <span v-if="!showSidebar || !collapsed" class="text-sm font-medium tracking-wide opacity-80">Shelf</span>
       </button>
 
       <div class="header-content">
@@ -125,7 +125,7 @@ function logout() {
 
     <!-- Body -->
     <div class="flex flex-1 overflow-hidden">
-      <CoarSidebar v-if="isAdminArea" v-model:collapsed="collapsed" elevated class="z-10">
+      <CoarSidebar v-if="showSidebar" v-model:collapsed="collapsed" elevated class="z-10">
         <CoarSidebarSpacer height="4px" />
         <CoarSidebarItem
           icon="layout-dashboard"
