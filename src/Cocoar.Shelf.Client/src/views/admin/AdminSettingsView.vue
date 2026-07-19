@@ -39,7 +39,7 @@ function isActive(path: string): boolean {
           @clicked="router.push('/admin/settings/users')"
         />
         <CoarMenuItem
-          icon="users-round"
+          icon="shield"
           label="Groups"
           :class="{ 'admin-menu-item--active': isActive('/admin/settings/groups') }"
           @clicked="router.push('/admin/settings/groups')"

@@ -338,7 +338,7 @@ async function onDeleteVersion(version: string) {
                 </div>
                 <div v-if="form.readPrincipals.length > 0" class="tag-chips">
                   <span v-for="p in form.readPrincipals" :key="p.kind + ':' + p.id" class="tag-chip">
-                    <CoarIcon :name="p.kind === 'Group' ? 'users-round' : 'user'" class="chip-icon" />
+                    <CoarIcon :name="p.kind === 'Group' ? 'users' : 'user'" class="chip-icon" />
                     {{ principalLabel(p) }}
                     <button class="tag-chip-remove" type="button" aria-label="Remove" @click="removePrincipal(p)">×</button>
                   </span>

@@ -147,7 +147,7 @@ async function save() {
     :close="close"
     :title="modalTitle"
     :sub-title="isCreate ? 'Create a permission group' : `Editing ${props.id}`"
-    icon="users-round"
+    icon="shield"
     width="46rem"
     :footer-button="footerButton"
   >
