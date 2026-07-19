@@ -33,6 +33,8 @@ The product dialog is a modal with four tabs:
 - **Name** — product identifier used in URLs (e.g. `configuration`). Cannot be changed after creation.
 - **Visibility** — `public` or `preview`
 - **Display Name / Description** — shown on the landing page
+- **Source** — mark the product *Open Source* or *Proprietary* (or leave *Unspecified*). This shows as a colored badge on the landing page so open-source and closed-source docs can sit side by side and be told apart at a glance. Display-only — it does not restrict access (use **Restricted** for that).
+- **Repository URL** — optional source-repository link. When set, the landing card shows a discreet "Source ↗" link; leave it empty and the product carries no repo link (typical for proprietary products).
 - **Show when empty** — display on the landing page before any version is deployed ("Coming soon" teaser)
 
 ### Access

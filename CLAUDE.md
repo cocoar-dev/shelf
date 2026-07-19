@@ -100,8 +100,9 @@ Backend (`src/Cocoar.Shelf/`):
 - `ShelfOptions.cs` — all configuration (incl. `ModgudOptions`)
 - `Identity/` — ModgudUserProvisioning, ModgudClaimsTransformation, ClaimsSnapshot,
   RbacCookiePreservation, AdminCheck, MartenUserStore
-- `Models/` — ProductConfig (+`Restricted`, `ReadPrincipals`), Group, Principal
-  (`IPrincipal`/`PrincipalRef`), UserDocument (+claims snapshot), AccessLogEntry (+lat/lng)
+- `Models/` — ProductConfig (+`Restricted`, `ReadPrincipals`, `Openness`, `RepositoryUrl`), Group,
+  Principal (`IPrincipal`/`PrincipalRef`), ProductOpenness (enum), UserDocument (+claims snapshot),
+  AccessLogEntry (+lat/lng)
 - `Endpoints/` — ApiEndpoints (products/versions), AuthEndpoints, SettingsEndpoints,
   UserEndpoints, AnalyticsEndpoints, GroupEndpoints, PrincipalEndpoints, TestAuthEndpoints, ApiKeyFilter
 - `Middleware/DocsRoutingMiddleware.cs` — docs routing, rewriting, access-log recording
@@ -118,7 +119,11 @@ Frontend (`src/Cocoar.Shelf.Client/src/`):
 - `layouts/AppLayout.vue` — one shared shell for landing + admin (header always; sidebar for
   logged-in admins everywhere); `views/LandingView.vue` renders inside it
 - `views/products/` — grid + tabbed edit modal (General / **Access** / Tags & API / Versions);
-  Access tab = Restricted toggle + principal picker (groups + users)
+  General tab = Openness (`ProductOpenness`) select + optional Repository URL; Access tab =
+  Restricted toggle + principal picker (groups + users)
+- `views/LandingView.vue` — product cards show an **openness badge** (Open Source / Proprietary,
+  none when unspecified) + an optional "Source ↗" repo link; toolbar filters by tag AND openness
+  (`preferences.store` persists `opennessFilter`)
 - `views/groups/` — Groups grid + tabbed modal (General / Members / Auto-membership with
   `CoarScriptEditor` from `@cocoar/vue-script-editor` + dry-run)
 - `views/admin/` — GeneralSettings (master key), Users, Groups, AccessLog, GeoIP;
@@ -150,3 +155,4 @@ Frontend (`src/Cocoar.Shelf.Client/src/`):
 - **Restricted → 404, not 403** for authed-no-grant (no existence leak); restricted products are fully invisible (no teaser)
 - **Analytics aggregation is server-side** — the browser only renders; country flags/names are derived client-side from the ISO code (display only)
 - **modgud owns identity, Shelf owns authorization** — groups/grants reference products, which only exist in Shelf, so revocation is immediate (per request, not next login)
+- **Openness is a display marker, not access control** — `ProductConfig.Openness` (Open Source / Proprietary / Unspecified) only drives a landing badge + filter; proprietary docs are hosted publicly and findable, just clearly labeled. Hide docs with `Restricted`, not `Openness`. The repo link lives in the product's own VitePress docs; Shelf adds only the optional `RepositoryUrl` "Source ↗" link — omit it for closed source

@@ -82,6 +82,8 @@ public static partial class ApiEndpoints
                         config.ReadPrincipals,
                         config.Tags,
                         config.ShowWhenEmpty,
+                        config.Openness,
+                        config.RepositoryUrl,
                         HasApiKey = !string.IsNullOrEmpty(config.ApiKey),
                         Latest = manifest?.Latest,
                         Versions = manifest?.Versions ?? (IReadOnlyList<string>)[]
@@ -163,6 +165,8 @@ public static partial class ApiEndpoints
                 config.ReadPrincipals,
                 config.Tags,
                 config.ShowWhenEmpty,
+                config.Openness,
+                config.RepositoryUrl,
                 HasApiKey = !string.IsNullOrEmpty(config.ApiKey),
                 Latest = manifest?.Latest,
                 Versions = manifest?.Versions ?? (IReadOnlyList<string>)[]
@@ -343,7 +347,9 @@ public static partial class ApiEndpoints
                 ShowWhenEmpty = request.ShowWhenEmpty ?? false,
                 ApiKey = request.ApiKey,
                 Restricted = request.Restricted ?? false,
-                ReadPrincipals = NormalizePrincipals(request.ReadPrincipals)
+                ReadPrincipals = NormalizePrincipals(request.ReadPrincipals),
+                Openness = request.Openness ?? ProductOpenness.Unspecified,
+                RepositoryUrl = NormalizeUrl(request.RepositoryUrl)
             };
 
             await configService.CreateAsync(config);
@@ -384,7 +390,10 @@ public static partial class ApiEndpoints
                 ShowWhenEmpty = request.ShowWhenEmpty ?? existing.ShowWhenEmpty,
                 ApiKey = request.ApiKey ?? existing.ApiKey,
                 Restricted = request.Restricted ?? existing.Restricted,
-                ReadPrincipals = request.ReadPrincipals != null ? NormalizePrincipals(request.ReadPrincipals) : existing.ReadPrincipals
+                ReadPrincipals = request.ReadPrincipals != null ? NormalizePrincipals(request.ReadPrincipals) : existing.ReadPrincipals,
+                Openness = request.Openness ?? existing.Openness,
+                // null = keep, "" = clear the repo link, value = set.
+                RepositoryUrl = request.RepositoryUrl == null ? existing.RepositoryUrl : NormalizeUrl(request.RepositoryUrl)
             };
 
             await configService.UpdateAsync(config);
@@ -536,6 +545,10 @@ public static partial class ApiEndpoints
 
     private static IReadOnlyList<string> NormalizeTags(IReadOnlyList<string>? tags) =>
         tags == null ? [] : tags.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Order().ToList();
+
+    // Trim; an empty/whitespace URL is stored as null (no repo link).
+    private static string? NormalizeUrl(string? url) =>
+        string.IsNullOrWhiteSpace(url) ? null : url.Trim();
 
     // Trim, drop blanks, dedupe (user emails case-insensitively).
     private static IReadOnlyList<PrincipalRef> NormalizePrincipals(IReadOnlyList<PrincipalRef>? principals) =>

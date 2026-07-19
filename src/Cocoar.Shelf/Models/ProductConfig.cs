@@ -30,5 +30,18 @@ public class ProductConfig
 
     public bool ShowWhenEmpty { get; set; }
 
+    /// <summary>
+    /// Whether this product's source is public. Display-only: drives a landing-page badge so
+    /// open-source and proprietary docs can be hosted side by side and clearly told apart.
+    /// Default <see cref="ProductOpenness.Unspecified"/> ⇒ no badge.
+    /// </summary>
+    public ProductOpenness Openness { get; set; } = ProductOpenness.Unspecified;
+
+    /// <summary>
+    /// Optional source-repository URL. When set, the landing card shows a "Source ↗" link — typically
+    /// only for open-source products; leave empty so proprietary docs carry no repo link.
+    /// </summary>
+    public string? RepositoryUrl { get; set; }
+
     public string? ApiKey { get; set; }
 }

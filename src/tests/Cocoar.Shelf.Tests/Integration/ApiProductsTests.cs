@@ -33,6 +33,82 @@ public class ApiProductsTests
     }
 
     [Fact]
+    public async Task CreateProduct_PersistsOpennessAndRepositoryUrl()
+    {
+        await CreateProductViaApi(new
+        {
+            name = "test-oss",
+            displayName = "OSS Product",
+            source = "upload",
+            openness = "OpenSource",
+            repositoryUrl = "https://github.com/cocoar-dev/example"
+        });
+
+        var product = await GetProduct("test-oss");
+        Assert.Equal("OpenSource", product.GetProperty("openness").GetString());
+        Assert.Equal("https://github.com/cocoar-dev/example", product.GetProperty("repositoryUrl").GetString());
+    }
+
+    [Fact]
+    public async Task CreateProduct_DefaultsToUnspecified_WithNoRepositoryUrl()
+    {
+        await CreateProductViaApi(new { name = "test-default-openness", source = "upload" });
+
+        var product = await GetProduct("test-default-openness");
+        Assert.Equal("Unspecified", product.GetProperty("openness").GetString());
+        Assert.Equal(JsonValueKind.Null, product.GetProperty("repositoryUrl").ValueKind);
+    }
+
+    [Fact]
+    public async Task UpdateProduct_ClearsRepositoryUrl_WhenEmptyString()
+    {
+        await CreateProductViaApi(new
+        {
+            name = "test-clear-repo",
+            source = "upload",
+            openness = "Proprietary",
+            repositoryUrl = "https://example.com/private"
+        });
+
+        // Empty string clears the repo link; the openness marker is left untouched.
+        await UpdateProductViaApi("test-clear-repo", new { repositoryUrl = "" });
+
+        var product = await GetProduct("test-clear-repo");
+        Assert.Equal(JsonValueKind.Null, product.GetProperty("repositoryUrl").ValueKind);
+        Assert.Equal("Proprietary", product.GetProperty("openness").GetString());
+    }
+
+    private async Task CreateProductViaApi(object body)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Post, "/_api/products")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json")
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _fixture.ApiKey);
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    private async Task UpdateProductViaApi(string name, object body)
+    {
+        var request = new HttpRequestMessage(HttpMethod.Put, $"/_api/products/{name}")
+        {
+            Content = new StringContent(JsonSerializer.Serialize(body), System.Text.Encoding.UTF8, "application/json")
+        };
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", _fixture.ApiKey);
+        var response = await _client.SendAsync(request);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    private async Task<JsonElement> GetProduct(string name)
+    {
+        var response = await _client.GetAsync($"/_api/products/{name}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var json = await response.Content.ReadAsStringAsync();
+        return JsonDocument.Parse(json).RootElement.Clone();
+    }
+
+    [Fact]
     public async Task GetVersions_Returns404_WhenProductNotRegistered()
     {
         var response = await _client.GetAsync("/_api/products/nonexistent/versions");

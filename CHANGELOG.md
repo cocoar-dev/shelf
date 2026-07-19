@@ -4,6 +4,13 @@ All notable changes to Shelf will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [2.2.0] — 2026-07-19
+
+### Added
+
+- **Open-source vs proprietary marker** — a product can be tagged *Open Source* or *Proprietary* (or left unspecified). The marker shows as a colored badge on the landing page, so closed-source product docs can be hosted and found alongside open-source ones and be clearly told apart. The landing page gains a matching filter. Purely a display dimension — orthogonal to visibility and access control.
+- **Optional repository URL** — a product can carry a source-repository link. When set, the landing card shows a discreet “Source ↗” link; leave it empty and closed-source docs carry no repo link. Set both on the product form (General tab).
+
 ## [2.1.1] — 2026-07-19
 
 ### Fixed

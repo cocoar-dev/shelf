@@ -93,6 +93,8 @@ Shelf serves a Vue SPA as the landing page at the root URL (`/` or `{PathBase}/`
 
 All tags used across any registered product are automatically collected and displayed as clickable filter chips in a toolbar above the product grid. Clicking a tag narrows the visible products to those that carry that tag. Multiple tags can be active simultaneously (AND filter). The active selection is persisted in `localStorage` so visitors get the same view on their next visit.
 
+Next to the tags, once any product is marked [Open Source or Proprietary](./product-registration.md#openness-repository-link), the toolbar also shows **Open Source** / **Proprietary** filter chips so visitors can narrow the list to one kind. This selection is persisted the same way.
+
 ### Preview Toggle
 
 Products with `visibility: "preview"` and pre-release-only versions are hidden by default. A "Show preview" toggle reveals:

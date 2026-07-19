@@ -28,8 +28,13 @@ ui.set((ctx) => {
 
 const rowData = computed(() => productsStore.items);
 
+const opennessLabels: Record<string, string> = {
+  OpenSource: 'Open Source',
+  Proprietary: 'Proprietary',
+};
+
 const builder = CoarGridBuilder.create<Product>()
-  .persistColumnState('shelf-products-v3')
+  .persistColumnState('shelf-products-v4')
   .option('getRowId', (p: any) => p.data.name)
   .rowDataRef(rowData)
   .searchHighlight()
@@ -55,6 +60,8 @@ const builder = CoarGridBuilder.create<Product>()
     (col: any) => col.field('visibility').header('Visibility').width(110).option('minWidth', 100),
     (col: any) => col.field('restricted').header('Restricted').width(110).option('minWidth', 95)
       .option('valueGetter', (p: any) => (p.data?.restricted ? 'restricted' : '')),
+    (col: any) => col.field('openness').header('Source').width(120).option('minWidth', 100)
+      .option('valueGetter', (p: any) => opennessLabels[p.data?.openness] ?? ''),
     (col: any) => col.field('latest').header('Latest').width(110).option('minWidth', 90),
     (col: any) => col.field('versions').header('Versions').width(100).option('minWidth', 95)
       .option('valueGetter', (p: any) => p.data?.versions?.length ?? 0),
