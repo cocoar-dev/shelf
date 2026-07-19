@@ -1,7 +1,7 @@
 <template>
   <div class="landing">
-    <div class="landing-toolbar" v-if="hasAnyPreviewContent || allTags.length > 0">
-      <div class="toolbar-tags" v-if="allTags.length > 0">
+    <div class="landing-toolbar" v-if="hasAnyPreviewContent || hasAnyOpenness || allTags.length > 0">
+      <div class="toolbar-tags" v-if="allTags.length > 0 || hasAnyOpenness">
         <span class="toolbar-label">Filter:</span>
         <button
           v-for="tag in allTags"
@@ -11,6 +11,20 @@
           @click="toggleTag(tag)"
         >{{ tag }}</button>
         <button v-if="selectedTags.length > 0" class="tag-clear" @click="clearTags">Clear</button>
+
+        <template v-if="hasAnyOpenness">
+          <span class="toolbar-divider" v-if="allTags.length > 0" aria-hidden="true"></span>
+          <button
+            class="tag-filter-chip openness-filter openness-filter--oss"
+            :class="{ active: opennessFilter === 'OpenSource' }"
+            @click="toggleOpenness('OpenSource')"
+          >Open Source</button>
+          <button
+            class="tag-filter-chip openness-filter openness-filter--prop"
+            :class="{ active: opennessFilter === 'Proprietary' }"
+            @click="toggleOpenness('Proprietary')"
+          >Proprietary</button>
+        </template>
       </div>
 
       <label class="filter-toggle" v-if="hasAnyPreviewContent">
@@ -31,11 +45,24 @@
           <div class="card-title-row">
             <div class="card-name">{{ product.displayName || product.name }}</div>
             <span v-if="isPreviewProduct(product)" class="preview-badge">preview</span>
+            <span
+              v-if="product.openness && product.openness !== 'Unspecified'"
+              class="openness-badge"
+              :class="product.openness === 'OpenSource' ? 'openness-badge--oss' : 'openness-badge--prop'"
+            >{{ opennessLabel(product.openness) }}</span>
           </div>
           <div v-if="product.description" class="card-desc">{{ product.description }}</div>
           <div v-if="product.tags && product.tags.length > 0" class="card-tags">
             <span v-for="tag in product.tags" :key="tag" class="card-tag">{{ tag }}</span>
           </div>
+          <a
+            v-if="product.repositoryUrl"
+            :href="product.repositoryUrl"
+            target="_blank"
+            rel="noopener"
+            class="card-source"
+            @click.stop
+          >Source ↗</a>
           <div v-if="visibleVersions(product).length > 0" class="card-versions">
             <a
               v-for="v in visibleVersions(product)"
@@ -59,11 +86,23 @@
           <div class="card-title-row">
             <div class="card-name">{{ product.displayName || product.name }}</div>
             <span v-if="product.visibility === 'preview'" class="preview-badge">preview</span>
+            <span
+              v-if="product.openness && product.openness !== 'Unspecified'"
+              class="openness-badge"
+              :class="product.openness === 'OpenSource' ? 'openness-badge--oss' : 'openness-badge--prop'"
+            >{{ opennessLabel(product.openness) }}</span>
           </div>
           <div v-if="product.description" class="card-desc">{{ product.description }}</div>
           <div v-if="product.tags && product.tags.length > 0" class="card-tags">
             <span v-for="tag in product.tags" :key="tag" class="card-tag">{{ tag }}</span>
           </div>
+          <a
+            v-if="product.repositoryUrl"
+            :href="product.repositoryUrl"
+            target="_blank"
+            rel="noopener"
+            class="card-source"
+          >Source ↗</a>
           <div class="card-coming-soon">Coming soon</div>
         </div>
       </template>
@@ -79,12 +118,12 @@
 import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
 import type { Product } from '@/core/models/shelf.models';
-import { usePreferencesStore } from '@/stores/preferences.store';
+import { usePreferencesStore, opennessLabel } from '@/stores/preferences.store';
 import { useUI } from '@/composables/useUI';
 
 const prefs = usePreferencesStore();
-const { showPreview, selectedTags } = storeToRefs(prefs);
-const { toggleTag, clearTags } = prefs;
+const { showPreview, selectedTags, opennessFilter } = storeToRefs(prefs);
+const { toggleTag, clearTags, toggleOpenness } = prefs;
 
 const ui = useUI();
 ui.set((ctx) => {
@@ -125,6 +164,11 @@ const hasAnyPreviewContent = computed(() =>
   )
 );
 
+// Only surface the open-source/proprietary filter once at least one product is marked.
+const hasAnyOpenness = computed(() =>
+  eligibleProducts.value.some(p => p.openness && p.openness !== 'Unspecified')
+);
+
 // All unique tags across all registered products (sorted)
 const allTags = computed(() => {
   const set = new Set<string>();
@@ -148,6 +192,10 @@ const visibleProducts = computed(() => {
     products = products.filter(p =>
       selectedTags.value.every(t => (p.tags ?? []).includes(t))
     );
+  }
+
+  if (opennessFilter.value) {
+    products = products.filter(p => p.openness === opennessFilter.value);
   }
 
   return products;
@@ -300,6 +348,66 @@ onMounted(async () => {
   background: var(--coar-background-semantic-warning-subtle, #fef3c7);
   color: var(--coar-text-semantic-warning, #92400e);
   border: 1px solid var(--coar-border-semantic-warning-subtle, #fde68a);
+}
+
+.openness-badge {
+  font-size: 0.7em;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+
+.openness-badge--oss {
+  background: var(--coar-background-semantic-success-subtle, #dcfce7);
+  color: var(--coar-text-semantic-success, #166534);
+  border: 1px solid var(--coar-border-semantic-success-subtle, #bbf7d0);
+}
+
+/* Proprietary = deliberately muted (no open source). */
+.openness-badge--prop {
+  background: var(--coar-background-neutral-secondary);
+  color: var(--coar-text-neutral-secondary);
+  border: 1px solid var(--coar-border-neutral-tertiary);
+}
+
+.card-source {
+  margin-top: 12px;
+  align-self: flex-start;
+  font-size: 0.8em;
+  font-weight: 500;
+  color: var(--coar-text-neutral-tertiary);
+  text-decoration: none;
+}
+
+.card-source:hover {
+  color: var(--coar-text-accent-primary);
+  text-decoration: underline;
+}
+
+.toolbar-divider {
+  width: 1px;
+  align-self: stretch;
+  margin: 2px 4px;
+  background: var(--coar-border-neutral-tertiary);
+}
+
+.openness-filter::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.openness-filter--oss::before {
+  background: var(--coar-text-semantic-success, #16a34a);
+}
+
+.openness-filter--prop::before {
+  background: var(--coar-text-neutral-tertiary);
 }
 
 .card-desc {

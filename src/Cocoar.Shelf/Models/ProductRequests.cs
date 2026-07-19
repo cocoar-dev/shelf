@@ -1,5 +1,5 @@
 namespace Cocoar.Shelf.Models;
 
-public record CreateProductRequest(string Name, string? DisplayName, string? Description, string? Source, string? Visibility, IReadOnlyList<string>? Tags, bool? ShowWhenEmpty, string? ApiKey, bool? Restricted = null, IReadOnlyList<PrincipalRef>? ReadPrincipals = null);
+public record CreateProductRequest(string Name, string? DisplayName, string? Description, string? Source, string? Visibility, IReadOnlyList<string>? Tags, bool? ShowWhenEmpty, string? ApiKey, bool? Restricted = null, IReadOnlyList<PrincipalRef>? ReadPrincipals = null, ProductOpenness? Openness = null, string? RepositoryUrl = null);
 
-public record UpdateProductRequest(string? DisplayName, string? Description, string? Source, string? Visibility, IReadOnlyList<string>? Tags, bool? ShowWhenEmpty, string? ApiKey, bool? Restricted = null, IReadOnlyList<PrincipalRef>? ReadPrincipals = null);
+public record UpdateProductRequest(string? DisplayName, string? Description, string? Source, string? Visibility, IReadOnlyList<string>? Tags, bool? ShowWhenEmpty, string? ApiKey, bool? Restricted = null, IReadOnlyList<PrincipalRef>? ReadPrincipals = null, ProductOpenness? Openness = null, string? RepositoryUrl = null);

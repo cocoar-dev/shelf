@@ -1,3 +1,6 @@
+/** Whether a product's source is public — display-only, drives a landing-page badge. */
+export type ProductOpenness = 'Unspecified' | 'OpenSource' | 'Proprietary';
+
 /** A principal (group or user) that a product's read access can be granted to. */
 export type PrincipalKind = 'Group' | 'User';
 
@@ -26,6 +29,10 @@ export interface Product {
   readPrincipals: PrincipalRef[];
   tags: string[];
   showWhenEmpty: boolean;
+  /** Open-source vs proprietary marker (display-only). */
+  openness: ProductOpenness;
+  /** Optional source-repository URL; when set the landing card shows a "Source ↗" link. */
+  repositoryUrl: string | null;
   hasApiKey: boolean;
   latest: string | null;
   versions: string[];
@@ -47,6 +54,8 @@ export interface CreateProductRequest {
   showWhenEmpty?: boolean;
   restricted?: boolean;
   readPrincipals?: PrincipalRef[];
+  openness?: ProductOpenness;
+  repositoryUrl?: string;
   /** Per-product upload key. Write-only: responses only carry hasApiKey. */
   apiKey?: string;
 }
@@ -60,6 +69,9 @@ export interface UpdateProductRequest {
   showWhenEmpty?: boolean;
   restricted?: boolean;
   readPrincipals?: PrincipalRef[];
+  openness?: ProductOpenness;
+  /** undefined = keep, '' = remove the repo link, value = set. */
+  repositoryUrl?: string;
   /** undefined = keep, '' = remove, value = replace. */
   apiKey?: string;
 }

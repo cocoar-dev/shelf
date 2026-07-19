@@ -106,6 +106,8 @@ Each JSON file describes one product:
 | `description` | No | Short description of the product |
 | `source` | No | Deployment source type. Default: `"upload"` |
 | `visibility` | No | `"public"` or `"preview"`. Default: `"public"` |
+| `openness` | No | `"OpenSource"`, `"Proprietary"` or `"Unspecified"`. Drives a badge + filter on the landing page (display-only). Default: `"Unspecified"` |
+| `repositoryUrl` | No | Optional source-repository link; when set, the landing card shows a "Source ↗" link |
 | `tags` | No | List of free-form labels (e.g. `["C#", "UI"]`). Used for filtering on the landing page |
 | `showWhenEmpty` | No | Show on landing page even without any deployed versions. Default: `false` |
 
@@ -133,6 +135,19 @@ Tags are stored as an array of strings. Shelf normalises them automatically: lea
 ```json
 {
   "tags": ["C#", ".NET", "Configuration"]
+}
+```
+
+### Openness & Repository Link
+
+The `openness` field marks whether a product's source is public — `"OpenSource"`, `"Proprietary"`, or `"Unspecified"` (the default). Marked products get a colored badge on the landing page and can be filtered by it, so open-source and proprietary documentation can be hosted side by side and told apart at a glance. It is a **display marker only** — it does not restrict access. To actually hide a product, mark it [restricted](./admin-ui.md#access-control) instead.
+
+Set `repositoryUrl` to show a discreet "Source ↗" link on the product card — typically for open-source products. Leave it empty and the card carries no repository link, which is the usual choice for proprietary products.
+
+```json
+{
+  "openness": "OpenSource",
+  "repositoryUrl": "https://github.com/cocoar-dev/configuration"
 }
 ```
 

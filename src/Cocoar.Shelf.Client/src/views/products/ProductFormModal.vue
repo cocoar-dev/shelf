@@ -9,7 +9,7 @@ import { useProductsStore } from '@/stores/products.store';
 import { shelfApi } from '@/core/api/shelf-api';
 import { ApiError } from '@/core/api/http';
 import { generateApiKey, copyToClipboard } from '@/core/api-key-utils';
-import type { Principal, PrincipalRef } from '@/core/models/shelf.models';
+import type { Principal, PrincipalRef, ProductOpenness } from '@/core/models/shelf.models';
 
 const props = defineProps<{
   id: string
@@ -29,12 +29,20 @@ const visibilityOptions = [
   { value: 'preview', label: 'Preview' },
 ];
 
+const opennessOptions = [
+  { value: 'Unspecified', label: 'Unspecified' },
+  { value: 'OpenSource', label: 'Open Source' },
+  { value: 'Proprietary', label: 'Proprietary' },
+];
+
 const form = ref({
   name: '',
   displayName: '',
   description: '',
   source: 'upload',
   visibility: 'public',
+  openness: 'Unspecified' as ProductOpenness,
+  repositoryUrl: '',
   restricted: false,
   readPrincipals: [] as PrincipalRef[],
   tags: [] as string[],
@@ -120,6 +128,8 @@ async function loadProduct() {
     description: product.description ?? '',
     source: product.source,
     visibility: product.visibility,
+    openness: product.openness ?? 'Unspecified',
+    repositoryUrl: product.repositoryUrl ?? '',
     restricted: product.restricted ?? false,
     readPrincipals: [...(product.readPrincipals ?? [])],
     tags: [...(product.tags ?? [])],
@@ -184,6 +194,9 @@ async function save() {
       description: form.value.description || undefined,
       source: form.value.source || undefined,
       visibility: form.value.visibility,
+      openness: form.value.openness,
+      // Always sent: '' clears the repo link, a value sets it.
+      repositoryUrl: form.value.repositoryUrl.trim(),
       restricted: form.value.restricted,
       readPrincipals: form.value.readPrincipals,
       tags: form.value.tags,
@@ -293,6 +306,23 @@ async function onDeleteVersion(version: string) {
               <CoarFormField label="Description">
                 <CoarTextInput v-model="form.description" placeholder="Short description of this product" :rows="2" />
               </CoarFormField>
+
+              <div class="flex gap-4">
+                <CoarFormField
+                  label="Source"
+                  hint="Shown as a badge on the landing page"
+                  class="openness-select"
+                >
+                  <CoarSelect v-model="form.openness" :options="opennessOptions" />
+                </CoarFormField>
+                <CoarFormField
+                  label="Repository URL"
+                  hint="Optional — adds a “Source ↗” link; leave empty for none"
+                  class="flex-1"
+                >
+                  <CoarTextInput v-model="form.repositoryUrl" placeholder="https://github.com/org/repo" clearable />
+                </CoarFormField>
+              </div>
 
               <CoarCheckbox
                 v-model="form.showWhenEmpty"
@@ -513,6 +543,10 @@ async function onDeleteVersion(version: string) {
 
 .visibility-select {
   width: 10rem;
+}
+
+.openness-select {
+  width: 11rem;
 }
 
 .section-heading {
