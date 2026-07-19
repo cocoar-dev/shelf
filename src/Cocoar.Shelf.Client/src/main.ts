@@ -9,6 +9,9 @@ import { cleanupColumnStates } from '@cocoar/vue-data-grid';
 
 cleanupColumnStates(180);
 
+// SVG country flags — emoji flags don't render on Windows. Imported here (not via a CSS @import)
+// so Vite's asset pipeline rewrites the flag url()s to bundled, correctly-resolving asset paths.
+import 'flag-icons/css/flag-icons.min.css';
 import './styles.css';
 
 const app = createApp(App);

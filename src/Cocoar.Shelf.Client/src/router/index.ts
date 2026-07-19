@@ -7,19 +7,19 @@ export const router = createRouter({
   history: createWebHistory(pathBase + '/'),
   routes: [
     {
+      // Shared shell (header always; sidebar only in the admin area). Public landing and the
+      // admin area are both children, so the whole SPA is one consistent view.
       path: '/',
-      component: () => import('@/views/LandingView.vue'),
-      meta: { public: true },
-    },
-    {
-      path: '/admin',
-      component: () => import('@/layouts/AdminLayout.vue'),
+      component: () => import('@/layouts/AppLayout.vue'),
       children: [
-        { path: '', component: () => import('@/views/DashboardView.vue') },
+        { path: '', component: () => import('@/views/LandingView.vue'), meta: { public: true } },
+
+        { path: 'admin', component: () => import('@/views/DashboardView.vue') },
         {
-          path: 'products',
+          path: 'admin/products',
           component: () => import('@/views/products/ProductListView.vue'),
           meta: {
+            admin: true,
             routedFragments: [
               {
                 type: 'modal',
@@ -31,20 +31,34 @@ export const router = createRouter({
             ],
           },
         },
-        { path: 'profile', component: () => import('@/views/ProfileView.vue') },
+        { path: 'admin/profile', component: () => import('@/views/ProfileView.vue') },
         {
-          path: 'analytics',
+          path: 'admin/analytics',
           component: () => import('@/views/AnalyticsView.vue'),
           meta: { admin: true },
         },
         {
-          path: 'settings',
+          path: 'admin/settings',
           component: () => import('@/views/admin/AdminSettingsView.vue'),
           meta: { admin: true },
           children: [
             { path: '', redirect: '/admin/settings/general' },
             { path: 'general', component: () => import('@/views/admin/GeneralSettingsView.vue') },
             { path: 'users', component: () => import('@/views/admin/UserListView.vue') },
+            {
+              path: 'groups',
+              component: () => import('@/views/groups/GroupListView.vue'),
+              meta: {
+                routedFragments: [
+                  {
+                    type: 'modal',
+                    path: ':id',
+                    component: () => import('@/views/groups/GroupFormModal.vue'),
+                    overlayOptions: { size: { height: '80vh' } },
+                  },
+                ],
+              },
+            },
             { path: 'access-log', component: () => import('@/views/admin/AccessLogView.vue') },
             { path: 'geoip', component: () => import('@/views/admin/GeoIpView.vue') },
           ],

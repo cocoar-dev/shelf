@@ -1,19 +1,42 @@
 using Cocoar.Shelf.Services;
+using Cocoar.Shelf.Services.Access;
 
 namespace Cocoar.Shelf.Endpoints;
 
 /// <summary>
 /// Endpoint filter that accepts authentication via either:
-/// - Cookie session (from Admin UI / browser)
+/// - Cookie session (from Admin UI / browser) — restricted to admins (product writes are an admin action)
 /// - Bearer API key: per-product key (from ProductConfig.ApiKey) or global key (from ShelfOptions.ApiKey)
 /// </summary>
 public partial class ApiKeyFilter(ILogger<ApiKeyFilter> logger) : IEndpointFilter
 {
     public async ValueTask<object?> InvokeAsync(EndpointFilterInvocationContext context, EndpointFilterDelegate next)
     {
-        // Accept cookie-based authentication (Admin UI)
+        // ShelfOptions is needed for both the cookie admin check and the bootstrap-key fallback.
+        ShelfOptions options;
+        try
+        {
+            options = context.HttpContext.RequestServices.GetRequiredService<ShelfOptions>();
+        }
+        catch (Exception ex)
+        {
+            LogConfigResolutionFailed(logger, ex);
+            return Results.Json(new { error = "Server configuration error" }, statusCode: 500);
+        }
+
+        // Cookie session (Admin UI): product writes are an admin action, so a cookie alone is not
+        // enough — the principal must be admin (token permission, allowlist, or an IsAdminGroup grant).
+        // This closes the gap where any authenticated user (JIT-provisioned at first modgud login)
+        // could create/update/delete products.
         if (context.HttpContext.User.Identity?.IsAuthenticated == true)
-            return await next(context);
+        {
+            var resolver = context.HttpContext.RequestServices.GetRequiredService<IAccessResolver>();
+            if (await resolver.IsAdminAsync(context.HttpContext.User))
+                return await next(context);
+
+            LogForbiddenNonAdmin(logger);
+            return Results.Json(new { error = "Admin access required" }, statusCode: 403);
+        }
 
         // Extract Bearer token
         var auth = context.HttpContext.Request.Headers.Authorization.ToString();
@@ -50,17 +73,6 @@ public partial class ApiKeyFilter(ILogger<ApiKeyFilter> logger) : IEndpointFilte
             return await next(context);
 
         // Fallback: the env/config bootstrap key
-        ShelfOptions options;
-        try
-        {
-            options = context.HttpContext.RequestServices.GetRequiredService<ShelfOptions>();
-        }
-        catch (Exception ex)
-        {
-            LogConfigResolutionFailed(logger, ex);
-            return Results.Json(new { error = "Server configuration error" }, statusCode: 500);
-        }
-
         if (!string.IsNullOrEmpty(options.ApiKey) && provided == options.ApiKey)
             return await next(context);
 
@@ -73,6 +85,9 @@ public partial class ApiKeyFilter(ILogger<ApiKeyFilter> logger) : IEndpointFilte
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Authentication required: no cookie or Bearer token")]
     private static partial void LogUnauthorized(ILogger logger);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Forbidden: authenticated cookie session is not an admin")]
+    private static partial void LogForbiddenNonAdmin(ILogger logger);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "Invalid API key")]
     private static partial void LogInvalidApiKey(ILogger logger);

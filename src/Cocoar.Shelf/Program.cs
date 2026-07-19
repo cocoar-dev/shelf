@@ -4,12 +4,14 @@ using Cocoar.Configuration.AspNetCore;
 using Cocoar.Configuration.DI.Extensions;
 using Cocoar.Configuration.Providers;
 using Cocoar.Configuration.Reactive;
+using Cocoar.JsEval.Engine;
 using Cocoar.Shelf;
 using Cocoar.Shelf.Endpoints;
 using Cocoar.Shelf.Identity;
 using Cocoar.Shelf.Middleware;
 using Cocoar.Shelf.Models;
 using Cocoar.Shelf.Services;
+using Cocoar.Shelf.Services.Access;
 using Marten;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -82,6 +84,11 @@ builder.Services.AddMarten(opts =>
     // Global runtime settings (single document)
     opts.Schema.For<ShelfSettings>()
         .DatabaseSchemaName("shelf");
+
+    // Groups (permission carriers — Access Control v2)
+    opts.Schema.For<Group>()
+        .DatabaseSchemaName("shelf")
+        .Index(x => x.IsDeleted);
 })
 .UseLightweightSessions()
 .ApplyAllDatabaseChangesOnStartup();
@@ -207,9 +214,19 @@ if (modgudConfigured)
             ctx.Principal = await ModgudUserProvisioning.CreatePrincipalWithRbacAsync(
                 signIn, user, oidc.FindFirst(ModgudClaimsTransformation.ResourceAccessClaimType)?.Value);
             ctx.Properties!.IsPersistent = true;
+
+            // Refresh the persisted claims snapshot from the full OIDC principal and recompute this
+            // user's auto-group membership — the modgud-claims → Shelf-groups bridge (Access Control v2).
+            var loginProcessor = services.GetRequiredService<ILoginAccessProcessor>();
+            await loginProcessor.RefreshSnapshotAndRecalculateAsync(sub, oidc, ctx.HttpContext.RequestAborted);
         };
     });
 }
+
+// Serialize enums as strings in the HTTP API (e.g. PrincipalRef.Kind → "Group"/"User"), so the
+// product access grants round-trip legibly between the SPA and the API.
+builder.Services.ConfigureHttpJsonOptions(o =>
+    o.SerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
 
 builder.Services.AddTransient<IClaimsTransformation, ModgudClaimsTransformation>();
 
@@ -217,7 +234,16 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy("Admin", policy => policy
         .RequireAuthenticatedUser()
-        .RequireAssertion(ctx => AdminCheck.IsAdmin(ctx.User, config)));
+        .RequireAssertion(async ctx =>
+        {
+            // Fast path: token permission / allowlist admin. Otherwise consult group grants
+            // (IsAdminGroup) per request via the resolver on the current HttpContext.
+            if (AdminCheck.IsAdmin(ctx.User, config))
+                return true;
+            if (ctx.Resource is HttpContext http)
+                return await http.RequestServices.GetRequiredService<IAccessResolver>().IsAdminAsync(ctx.User);
+            return false;
+        }));
 });
 
 // Behind a TLS-terminating reverse proxy: honor X-Forwarded-Proto/Host so the app builds correct
@@ -237,6 +263,15 @@ builder.Services.AddSingleton<ISettingsService, SettingsService>();
 
 builder.Services.AddSingleton<IProductConfigService, MartenProductConfigService>();
 builder.Services.AddHostedService<ProductConfigMigrationService>();
+
+builder.Services.AddSingleton<IGroupService, MartenGroupService>();
+
+// Access control v2: sandboxed JsEval for group auto-membership predicates.
+builder.Services.AddJsEval();
+builder.Services.AddScoped<IGroupMembershipEvaluator, JsEvalGroupMembershipEvaluator>();
+builder.Services.AddScoped<IGroupMembershipRecalculator, GroupMembershipRecalculator>();
+builder.Services.AddScoped<ILoginAccessProcessor, LoginAccessProcessor>();
+builder.Services.AddScoped<IAccessResolver, AccessResolver>();
 
 // Access log
 if (config.AccessLog.Enabled)

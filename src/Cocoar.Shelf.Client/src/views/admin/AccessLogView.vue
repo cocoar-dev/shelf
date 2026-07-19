@@ -3,6 +3,7 @@ import { onMounted, ref } from 'vue';
 import { CoarDataGrid, CoarGridBuilder } from '@cocoar/vue-data-grid';
 import { CoarContextMenu, CoarMenuItem, useContextMenu } from '@cocoar/vue-ui';
 import { http } from '@/core/api/http';
+import { countryName, flagClass } from '@/core/geo';
 
 interface AccessLogRow {
   id: string;
@@ -22,7 +23,7 @@ const total = ref(0);
 const viewportMenu = useContextMenu();
 
 const builder = CoarGridBuilder.create<AccessLogRow>()
-  .persistColumnState('admin-access-log-v2')
+  .persistColumnState('admin-access-log-v3')
   .option('getRowId', (p: any) => p.data.id)
   .rowDataRef(rows)
   .searchHighlight()
@@ -36,7 +37,10 @@ const builder = CoarGridBuilder.create<AccessLogRow>()
     (col: any) => col.field('product').header('Product').width(140).option('minWidth', 120),
     (col: any) => col.field('version').header('Version').width(90).option('minWidth', 85),
     (col: any) => col.field('path').header('Path').flex(1).option('minWidth', 140),
-    (col: any) => col.field('country').header('Country').width(110).option('minWidth', 95),
+    (col: any) => col.field('country').header('Country').width(160).option('minWidth', 120)
+      .option('cellRenderer', (p: any) => p.value
+        ? `<span class="${flagClass(p.value)}" style="margin-right:6px;border-radius:2px;vertical-align:-1px;"></span>${countryName(p.value)}`
+        : ''),
     (col: any) => col.field('city').header('City').width(120).option('minWidth', 90),
     (col: any) => col.field('userAgent').header('User Agent').flex(1).option('minWidth', 200),
   ]);

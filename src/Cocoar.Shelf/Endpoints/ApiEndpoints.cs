@@ -1,6 +1,7 @@
 using System.Text.RegularExpressions;
 using Cocoar.Shelf.Models;
 using Cocoar.Shelf.Services;
+using Cocoar.Shelf.Services.Access;
 using Microsoft.AspNetCore.Http.Features;
 
 namespace Cocoar.Shelf.Endpoints;
@@ -18,6 +19,8 @@ public static partial class ApiEndpoints
         api.MapAuthEndpoints();
         api.MapUserEndpoints();
         api.MapSettingsEndpoints();
+        api.MapGroupEndpoints();
+        api.MapPrincipalEndpoints();
 
         // Test-only sign-in seam — mapped exclusively for the integration test host.
         if (options.TestAuth)
@@ -51,30 +54,39 @@ public static partial class ApiEndpoints
     }
 
     private static async Task<IResult> GetProducts(
+        HttpContext httpContext,
         IProductConfigService configService,
         IManifestService manifestService,
+        IAccessResolver accessResolver,
         ILoggerFactory loggerFactory)
     {
         var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
         try
         {
-            var products = (await configService.GetAllAsync()).Select(config =>
-            {
-                var manifest = manifestService.GetManifest(config.Name);
-                return new
+            // Restricted products are fully invisible without a read grant (admins see all, badged).
+            var grants = await accessResolver.ResolveAsync(httpContext.User);
+
+            var products = (await configService.GetAllAsync())
+                .Where(config => !config.Restricted || grants.CanRead(config))
+                .Select(config =>
                 {
-                    config.Name,
-                    config.DisplayName,
-                    config.Description,
-                    config.Source,
-                    config.Visibility,
-                    config.Tags,
-                    config.ShowWhenEmpty,
-                    HasApiKey = !string.IsNullOrEmpty(config.ApiKey),
-                    Latest = manifest?.Latest,
-                    Versions = manifest?.Versions ?? (IReadOnlyList<string>)[]
-                };
-            });
+                    var manifest = manifestService.GetManifest(config.Name);
+                    return new
+                    {
+                        config.Name,
+                        config.DisplayName,
+                        config.Description,
+                        config.Source,
+                        config.Visibility,
+                        config.Restricted,
+                        config.ReadPrincipals,
+                        config.Tags,
+                        config.ShowWhenEmpty,
+                        HasApiKey = !string.IsNullOrEmpty(config.ApiKey),
+                        Latest = manifest?.Latest,
+                        Versions = manifest?.Versions ?? (IReadOnlyList<string>)[]
+                    };
+                });
 
             return Results.Ok(products);
         }
@@ -87,15 +99,18 @@ public static partial class ApiEndpoints
 
     private static async Task<IResult> GetVersions(
         string product,
+        HttpContext httpContext,
         IProductConfigService configService,
         IManifestService manifestService,
+        IAccessResolver accessResolver,
         ILoggerFactory loggerFactory)
     {
         var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
         try
         {
             var config = await configService.GetConfigAsync(product);
-            if (config == null)
+            // Restricted + no grant → 404, indistinguishable from not-registered (no existence leak).
+            if (config == null || (config.Restricted && !(await accessResolver.ResolveAsync(httpContext.User)).CanRead(config)))
             {
                 LogProductNotRegistered(logger, product);
                 return Results.Json(new { error = $"Product '{product}' is not registered" }, statusCode: 404);
@@ -119,15 +134,18 @@ public static partial class ApiEndpoints
 
     private static async Task<IResult> GetProduct(
         string product,
+        HttpContext httpContext,
         IProductConfigService configService,
         IManifestService manifestService,
+        IAccessResolver accessResolver,
         ILoggerFactory loggerFactory)
     {
         var logger = loggerFactory.CreateLogger("Cocoar.Shelf.Api");
         try
         {
             var config = await configService.GetConfigAsync(product);
-            if (config == null)
+            // Restricted + no grant → 404, indistinguishable from not-registered (no existence leak).
+            if (config == null || (config.Restricted && !(await accessResolver.ResolveAsync(httpContext.User)).CanRead(config)))
             {
                 LogProductNotRegistered(logger, product);
                 return Results.Json(new { error = $"Product '{product}' is not registered" }, statusCode: 404);
@@ -141,6 +159,8 @@ public static partial class ApiEndpoints
                 config.Description,
                 config.Source,
                 config.Visibility,
+                config.Restricted,
+                config.ReadPrincipals,
                 config.Tags,
                 config.ShowWhenEmpty,
                 HasApiKey = !string.IsNullOrEmpty(config.ApiKey),
@@ -321,7 +341,9 @@ public static partial class ApiEndpoints
                 Visibility = request.Visibility ?? "public",
                 Tags = NormalizeTags(request.Tags),
                 ShowWhenEmpty = request.ShowWhenEmpty ?? false,
-                ApiKey = request.ApiKey
+                ApiKey = request.ApiKey,
+                Restricted = request.Restricted ?? false,
+                ReadPrincipals = NormalizePrincipals(request.ReadPrincipals)
             };
 
             await configService.CreateAsync(config);
@@ -360,7 +382,9 @@ public static partial class ApiEndpoints
                 Visibility = request.Visibility ?? existing.Visibility,
                 Tags = request.Tags != null ? NormalizeTags(request.Tags) : existing.Tags,
                 ShowWhenEmpty = request.ShowWhenEmpty ?? existing.ShowWhenEmpty,
-                ApiKey = request.ApiKey ?? existing.ApiKey
+                ApiKey = request.ApiKey ?? existing.ApiKey,
+                Restricted = request.Restricted ?? existing.Restricted,
+                ReadPrincipals = request.ReadPrincipals != null ? NormalizePrincipals(request.ReadPrincipals) : existing.ReadPrincipals
             };
 
             await configService.UpdateAsync(config);
@@ -512,4 +536,12 @@ public static partial class ApiEndpoints
 
     private static IReadOnlyList<string> NormalizeTags(IReadOnlyList<string>? tags) =>
         tags == null ? [] : tags.Select(t => t.Trim()).Where(t => t.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).Order().ToList();
+
+    // Trim, drop blanks, dedupe (user emails case-insensitively).
+    private static IReadOnlyList<PrincipalRef> NormalizePrincipals(IReadOnlyList<PrincipalRef>? principals) =>
+        principals == null ? [] : principals
+            .Where(p => !string.IsNullOrWhiteSpace(p.Id))
+            .Select(p => new PrincipalRef(p.Kind, p.Id.Trim()))
+            .DistinctBy(p => (p.Kind, p.Kind == PrincipalKind.User ? p.Id.ToLowerInvariant() : p.Id))
+            .ToList();
 }

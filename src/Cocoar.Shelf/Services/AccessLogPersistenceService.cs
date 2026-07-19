@@ -61,6 +61,8 @@ public sealed partial class AccessLogPersistenceService : BackgroundService
         {
             entry.Country = geo.Value.CountryCode;
             entry.City = geo.Value.City;
+            entry.Latitude = geo.Value.Latitude;
+            entry.Longitude = geo.Value.Longitude;
         }
     }
 

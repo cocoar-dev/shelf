@@ -34,6 +34,10 @@ public static class LlmsTxtEndpoint
             if (!string.Equals(config.Visibility, "public", StringComparison.OrdinalIgnoreCase))
                 continue;
 
+            // The public LLM index never lists restricted products.
+            if (config.Restricted)
+                continue;
+
             var manifest = manifestService.GetManifest(config.Name);
             if (manifest == null)
                 continue;

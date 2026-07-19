@@ -29,7 +29,7 @@ ui.set((ctx) => {
 const rowData = computed(() => productsStore.items);
 
 const builder = CoarGridBuilder.create<Product>()
-  .persistColumnState('shelf-products-v2')
+  .persistColumnState('shelf-products-v3')
   .option('getRowId', (p: any) => p.data.name)
   .rowDataRef(rowData)
   .searchHighlight()
@@ -53,6 +53,8 @@ const builder = CoarGridBuilder.create<Product>()
     (col: any) => col.field('displayName').header('Display Name').flex(1).option('minWidth', 180),
     (col: any) => col.field('description').header('Description').flex(2).option('minWidth', 200),
     (col: any) => col.field('visibility').header('Visibility').width(110).option('minWidth', 100),
+    (col: any) => col.field('restricted').header('Restricted').width(110).option('minWidth', 95)
+      .option('valueGetter', (p: any) => (p.data?.restricted ? 'restricted' : '')),
     (col: any) => col.field('latest').header('Latest').width(110).option('minWidth', 90),
     (col: any) => col.field('versions').header('Versions').width(100).option('minWidth', 95)
       .option('valueGetter', (p: any) => p.data?.versions?.length ?? 0),

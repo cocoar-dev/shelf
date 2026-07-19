@@ -21,6 +21,10 @@ const route = useRoute();
 const { state: ui } = provideUI();
 const authStore = useAuthStore();
 
+// The sidebar is the admin navigation — shown whenever the user is a logged-in admin, on every
+// page including the public landing. Anonymous visitors and non-admin users get no sidebar.
+const showSidebar = computed(() => authStore.user?.isAdmin === true);
+
 const collapsed = ref(
   localStorage.getItem('sidebar-collapsed') === 'true',
 );
@@ -59,11 +63,15 @@ function logout() {
 
 <template>
   <div class="flex h-screen flex-col">
-    <!-- Header -->
+    <!-- Header (shared by the public landing and the admin area) -->
     <header v-if="ui.header.show" class="main-header">
-      <button class="header-logo" :style="{ width: collapsed ? '4rem' : '16rem' }" @click="router.push('/')">
+      <button
+        class="header-logo"
+        :style="showSidebar ? { width: collapsed ? '4rem' : '16rem' } : { padding: '0 1.25rem', gap: '0.6rem' }"
+        @click="router.push('/')"
+      >
         <CoarIcon name="book-open" />
-        <span v-if="!collapsed" class="text-sm font-medium tracking-wide opacity-80">Shelf</span>
+        <span v-if="!showSidebar || !collapsed" class="text-sm font-medium tracking-wide opacity-80">Shelf</span>
       </button>
 
       <div class="header-content">
@@ -78,7 +86,7 @@ function logout() {
         </div>
         <div class="flex-1" />
 
-        <!-- Dark mode toggle -->
+        <!-- Dark mode toggle (everyone) -->
         <button
           class="ml-2 flex h-9 w-9 items-center justify-center rounded-full text-white/70 transition hover:bg-white/20"
           title="Toggle dark mode"
@@ -87,12 +95,20 @@ function logout() {
           <CoarIcon :name="darkMode ? 'sun' : 'moon'" />
         </button>
 
-        <!-- User Avatar -->
+        <!-- Authenticated: avatar menu. Anonymous: sign-in. -->
         <button
+          v-if="authStore.isAuthenticated"
           class="ml-2 flex h-9 w-9 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white transition hover:bg-white/30"
           :title="authStore.userName ?? ''" @click="openUserMenu"
         >
           {{ userInitials }}
+        </button>
+        <button
+          v-else
+          class="signin-btn ml-2"
+          @click="authStore.login()"
+        >
+          Sign in
         </button>
       </div>
     </header>
@@ -101,13 +117,15 @@ function logout() {
     <CoarContextMenu :menu="userMenu">
       <CoarMenuItem :label="authStore.userName ?? 'User'" icon="user" @clicked="router.push('/admin/profile')" />
       <CoarMenuDivider />
+      <CoarMenuItem label="Docs home" icon="book-open" @clicked="router.push('/')" />
+      <CoarMenuItem v-if="authStore.user?.isAdmin" label="Admin area" icon="cog" @clicked="router.push('/admin')" />
       <CoarMenuItem label="Profile & Security" icon="circle-user" @clicked="router.push('/admin/profile')" />
       <CoarMenuItem label="Sign Out" icon="log-out" @clicked="logout" />
     </CoarContextMenu>
 
     <!-- Body -->
     <div class="flex flex-1 overflow-hidden">
-      <CoarSidebar v-model:collapsed="collapsed" elevated class="z-10">
+      <CoarSidebar v-if="showSidebar" v-model:collapsed="collapsed" elevated class="z-10">
         <CoarSidebarSpacer height="4px" />
         <CoarSidebarItem
           icon="layout-dashboard"
@@ -116,6 +134,7 @@ function logout() {
           @click="router.push('/admin')"
         />
         <CoarSidebarItem
+          v-if="authStore.user?.isAdmin"
           icon="book-open"
           label="Products"
           :active="route.path.startsWith('/admin/products')"
@@ -230,6 +249,22 @@ function logout() {
 
 .subtitle {
   font-size: 0.9em;
+}
+
+.signin-btn {
+  color: white;
+  font-size: 0.88rem;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  border-radius: 6px;
+  padding: 5px 14px;
+  cursor: pointer;
+  background: none;
+  transition: background 0.15s;
+}
+
+.signin-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
 }
 
 .main-footer {
