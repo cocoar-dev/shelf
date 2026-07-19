@@ -1,18 +1,5 @@
 <template>
   <div class="landing">
-    <header class="landing-header">
-      <div class="header-side"></div>
-      <h1>Documentation</h1>
-      <div class="header-side header-auth">
-        <template v-if="auth.isAuthenticated">
-          <RouterLink v-if="auth.user?.isAdmin" to="/admin" class="header-link">Admin</RouterLink>
-          <span class="header-user">{{ auth.userName }}</span>
-          <button class="header-link header-link--button" @click="auth.logout()">Sign out</button>
-        </template>
-        <button v-else class="header-link header-link--button" @click="auth.login()">Sign in</button>
-      </div>
-    </header>
-
     <div class="landing-toolbar" v-if="hasAnyPreviewContent || allTags.length > 0">
       <div class="toolbar-tags" v-if="allTags.length > 0">
         <span class="toolbar-label">Filter:</span>
@@ -91,15 +78,21 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
-import { RouterLink } from 'vue-router';
 import type { Product } from '@/core/models/shelf.models';
 import { usePreferencesStore } from '@/stores/preferences.store';
-import { useAuthStore } from '@/stores/auth.store';
+import { useUI } from '@/composables/useUI';
 
-const auth = useAuthStore();
 const prefs = usePreferencesStore();
 const { showPreview, selectedTags } = storeToRefs(prefs);
 const { toggleTag, clearTags } = prefs;
+
+const ui = useUI();
+ui.set((ctx) => {
+  ctx.header.title = 'Documentation';
+  ctx.header.subTitle = 'Cocoar product docs';
+  ctx.header.icon = 'book-open';
+  ctx.content.container = false;
+});
 
 const allProducts = ref<Product[]>([]);
 const isLoading = ref(true);
@@ -120,10 +113,6 @@ function visibleVersions(product: Product): string[] {
   if (showPreview.value) return product.versions;
   return product.versions.filter(v => !isPreRelease(v));
 }
-
-const productsWithVersions = computed(() =>
-  allProducts.value.filter(p => p.versions.length > 0)
-);
 
 // Products eligible to appear on the landing page (have versions, or are opted-in as teaser)
 const eligibleProducts = computed(() =>
@@ -178,68 +167,10 @@ onMounted(async () => {
 
 <style scoped>
 .landing {
-  min-height: 100vh;
-  background: #f8fafc;
-}
-
-.landing-header {
-  background: #1183CD;
-  color: white;
-  padding: 20px 24px;
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.landing-header h1 {
-  font-size: 1.5em;
-  font-weight: 600;
-  margin: 0;
-  text-align: center;
-}
-
-.header-side {
   flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.header-auth {
-  justify-content: flex-end;
-}
-
-.header-user {
-  font-size: 0.88rem;
-  opacity: 0.85;
-  white-space: nowrap;
-}
-
-.header-link {
-  color: white;
-  font-size: 0.88rem;
-  font-weight: 500;
-  text-decoration: none;
-  opacity: 0.9;
-  white-space: nowrap;
-}
-
-.header-link:hover {
-  opacity: 1;
-  text-decoration: underline;
-}
-
-.header-link--button {
-  background: none;
-  border: 1px solid rgba(255, 255, 255, 0.55);
-  border-radius: 6px;
-  padding: 4px 12px;
-  cursor: pointer;
-}
-
-.header-link--button:hover {
-  background: rgba(255, 255, 255, 0.12);
-  text-decoration: none;
+  min-width: 0;
+  overflow-y: auto;
+  background: var(--coar-background-neutral-secondary);
 }
 
 .landing-toolbar {
@@ -264,7 +195,7 @@ onMounted(async () => {
 .toolbar-label {
   font-size: 0.82rem;
   font-weight: 500;
-  color: #94a3b8;
+  color: var(--coar-text-neutral-tertiary);
   margin-right: 2px;
   white-space: nowrap;
 }
@@ -276,27 +207,27 @@ onMounted(async () => {
   font-size: 0.8rem;
   font-weight: 500;
   cursor: pointer;
-  border: 1px solid #e2e8f0;
-  background: #f8fafc;
-  color: #64748b;
+  border: 1px solid var(--coar-border-neutral-tertiary);
+  background: var(--coar-background-neutral-primary);
+  color: var(--coar-text-neutral-secondary);
   transition: background 0.12s, border-color 0.12s, color 0.12s;
 }
 
 .tag-filter-chip:hover {
-  border-color: #1183CD;
-  color: #1183CD;
+  border-color: var(--coar-text-accent-primary);
+  color: var(--coar-text-accent-primary);
 }
 
 .tag-filter-chip.active {
-  background: #dbeafe;
-  border-color: #1183CD;
-  color: #1183CD;
+  background: var(--coar-background-accent-tertiary);
+  border-color: var(--coar-text-accent-primary);
+  color: var(--coar-text-accent-primary);
   font-weight: 600;
 }
 
 .tag-clear {
   font-size: 0.78rem;
-  color: #94a3b8;
+  color: var(--coar-text-neutral-tertiary);
   background: none;
   border: none;
   cursor: pointer;
@@ -304,14 +235,14 @@ onMounted(async () => {
   text-decoration: underline;
 }
 
-.tag-clear:hover { color: #64748b; }
+.tag-clear:hover { color: var(--coar-text-neutral-secondary); }
 
 .filter-toggle {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 0.85rem;
-  color: #64748b;
+  color: var(--coar-text-neutral-secondary);
   cursor: pointer;
   user-select: none;
   white-space: nowrap;
@@ -332,8 +263,8 @@ onMounted(async () => {
 }
 
 .product-card {
-  background: white;
-  border: 1px solid #e2e8f0;
+  background: var(--coar-background-neutral-primary);
+  border: 1px solid var(--coar-border-neutral-tertiary);
   border-radius: 8px;
   padding: 24px;
   text-decoration: none;
@@ -344,7 +275,7 @@ onMounted(async () => {
 }
 
 .product-card:hover {
-  border-color: #1183CD;
+  border-color: var(--coar-text-accent-primary);
   box-shadow: 0 2px 8px rgba(17, 131, 205, 0.12);
 }
 
@@ -358,24 +289,22 @@ onMounted(async () => {
 .card-name {
   font-size: 1.15em;
   font-weight: 600;
-  color: #1183CD;
+  color: var(--coar-text-accent-primary);
 }
-
-.product-card:hover .card-name { color: #0E6DB0; }
 
 .preview-badge {
   font-size: 0.7em;
   font-weight: 600;
   padding: 2px 8px;
   border-radius: 10px;
-  background: #fef3c7;
-  color: #92400e;
-  border: 1px solid #fde68a;
+  background: var(--coar-background-semantic-warning-subtle, #fef3c7);
+  color: var(--coar-text-semantic-warning, #92400e);
+  border: 1px solid var(--coar-border-semantic-warning-subtle, #fde68a);
 }
 
 .card-desc {
   font-size: 0.9em;
-  color: #64748b;
+  color: var(--coar-text-neutral-secondary);
   line-height: 1.5;
 }
 
@@ -392,15 +321,15 @@ onMounted(async () => {
   border-radius: 10px;
   font-size: 0.75em;
   font-weight: 500;
-  background: #f1f5f9;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: var(--coar-background-neutral-secondary);
+  color: var(--coar-text-neutral-secondary);
+  border: 1px solid var(--coar-border-neutral-tertiary);
 }
 
 .card-versions {
   margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px solid #f1f1f2;
+  border-top: 1px solid var(--coar-border-neutral-tertiary);
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -413,25 +342,23 @@ onMounted(async () => {
   font-size: 0.78em;
   font-weight: 500;
   text-decoration: none;
-  background: #f6f6f7;
-  color: #64748b;
-  border: 1px solid #e2e8f0;
+  background: var(--coar-background-neutral-secondary);
+  color: var(--coar-text-neutral-secondary);
+  border: 1px solid var(--coar-border-neutral-tertiary);
   transition: border-color 0.15s, color 0.15s;
 }
 
 .version-badge:hover {
-  border-color: #1183CD;
-  color: #1183CD;
+  border-color: var(--coar-text-accent-primary);
+  color: var(--coar-text-accent-primary);
 }
 
 .version-badge--latest {
-  background: #dbeafe;
-  color: #1183CD;
-  border-color: #bfdbfe;
+  background: var(--coar-background-accent-tertiary);
+  color: var(--coar-text-accent-primary);
+  border-color: var(--coar-background-accent-tertiary);
   font-weight: 600;
 }
-
-.version-badge--latest:hover { background: #bfdbfe; }
 
 .version-badge--prerelease {
   border-style: dashed;
@@ -446,17 +373,17 @@ onMounted(async () => {
 .card-coming-soon {
   margin-top: 16px;
   padding-top: 14px;
-  border-top: 1px dashed #e2e8f0;
+  border-top: 1px dashed var(--coar-border-neutral-tertiary);
   font-size: 0.78em;
   font-weight: 500;
-  color: #94a3b8;
+  color: var(--coar-text-neutral-tertiary);
   letter-spacing: 0.04em;
   text-transform: uppercase;
 }
 
 .landing-empty {
   text-align: center;
-  color: #94a3b8;
+  color: var(--coar-text-neutral-tertiary);
   padding: 80px 24px;
   font-size: 1.1em;
 }
