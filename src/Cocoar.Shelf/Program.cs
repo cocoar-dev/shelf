@@ -89,6 +89,11 @@ builder.Services.AddMarten(opts =>
     opts.Schema.For<Group>()
         .DatabaseSchemaName("shelf")
         .Index(x => x.IsDeleted);
+
+    // One-time product-seed marker
+    opts.Schema.For<SeedState>()
+        .DatabaseSchemaName("shelf")
+        .Identity(x => x.Id);
 })
 .UseLightweightSessions()
 .ApplyAllDatabaseChangesOnStartup();
